@@ -62,7 +62,6 @@ setup(
     install_requires=[
         "ckanapi",
     ],
-
     # If there are data files included in your packages that need to be
     # installed, specify them here.  If using Python 2.6 or less, then these
     # have to be included in MANIFEST.in as well.
@@ -82,8 +81,12 @@ setup(
     entry_points='''
         [ckan.plugins]
         syndicate=ckanext.syndicate.plugin:SyndicatePlugin
+
 	[babel.extractors]
 	ckan = ckan.lib.extract:extract_ckan
+
+        [ckan.celery_task]
+        tasks=ckanext.syndicate.celery_import:task_imports
     ''',
 
     # If you are changing from the default layout of your extension, you may

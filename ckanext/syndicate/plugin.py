@@ -1,3 +1,5 @@
+import os
+
 import ckan.plugins as plugins
 import ckan.plugins.toolkit as toolkit
 from ckan.lib.celery_app import celery
@@ -9,11 +11,16 @@ from ckan.model.domain_object import DomainObjectOperation
 import uuid
 
 
-def syndicate_task(package):
+SYNDICATE_FLAG = 'syndicate'
+
+
+def syndicate_task(package_id, topic):
+    from pylons import config
+    ckan_ini_filepath = os.path.abspath(config.__file__)
     celery.send_task(
         'syndicate.sync_package',
-        args=[package, config.get('ckan.site_url')],
-        task_id='{}-{}'.format(str(uuid.uuid4()), package['id'])
+        args=[package_id, topic, ckan_ini_filepath],
+        task_id='{}-{}'.format(str(uuid.uuid4()), package_id)
     )
 
 
@@ -63,4 +70,5 @@ class SyndicatePlugin(plugins.SingletonPlugin):
             else:
                 return
 
-        syndicate_task(entity.id)
+        if entity.extras.get(SYNDICATE_FLAG, 'false') == 'true':
+            syndicate_task(entity.id, topic)

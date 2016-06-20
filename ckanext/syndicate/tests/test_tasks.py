@@ -20,16 +20,31 @@ class TestSyncPackageTask(custom_helpers.FunctionalTestBaseClass):
         super(TestSyncPackageTask, self).setup()
         self.user = factories.User()
 
-    def test_create_new_package(self):
+    def test_create_package(self):
         context={
             'user': self.user['name'],
         }
+
         dataset = helpers.call_action(
             'package_create',
             context=context,
             name='syndicated_dataset',
             extras=[
                 {'key': 'syndicate', 'value': 'true'},
+            ],
+            resources=[
+                {'upload': custom_helpers.test_upload_file,
+                 'url': 'test_file.txt',
+                 'url_type': 'upload',
+                 'format': 'txt',
+                 'name': 'test_file.txt',
+                },
+                {'upload': custom_helpers.test_upload_file,
+                 'url': 'test_file1.txt',
+                 'url_type': 'upload',
+                 'format': 'txt',
+                 'name': 'test_file1.txt',
+                }
             ],
         )
         nose.tools.assert_equal(dataset['name'], 'syndicated_dataset')
@@ -40,7 +55,7 @@ class TestSyncPackageTask(custom_helpers.FunctionalTestBaseClass):
                     self.app, apikey=self.user['apikey'])
 
             # Syndicate to our Test CKAN instance
-            sync_package(dataset['id'], "foo")
+            sync_package(dataset['id'], 'dataset/create')
 
         # Reload our local package, to read the syndicated ID
         source = helpers.call_action(
@@ -64,3 +79,76 @@ class TestSyncPackageTask(custom_helpers.FunctionalTestBaseClass):
         # Expect the id of the syndicated package to match the metadata
         # syndicated_id in the source package.
         nose.tools.assert_equal(syndicated['id'], syndicated_id)
+
+
+        # Test links to resources on the source CKAN instace have been added
+        resources = syndicated['resources']
+        nose.tools.assert_equal(len(resources), 2)
+        remote_resource_url = resources[0]['url']
+        local_resource_url = source['resources'][0]['url']
+        nose.tools.assert_equal(local_resource_url, remote_resource_url)
+
+        remote_resource_url = resources[1]['url']
+        local_resource_url = source['resources'][1]['url']
+        nose.tools.assert_equal(local_resource_url, remote_resource_url)
+
+    def test_update_package(self):
+        context={
+            'user': self.user['name'],
+        }
+
+        # Create a dummy remote dataset
+        remote_dataset = helpers.call_action(
+            'package_create',
+            context=custom_helpers._get_context(context),
+            name='remote_dataset',
+        )
+
+        syndicated_id = remote_dataset['id']
+
+        # Create the local syndicated dataset, pointing to the dummy remote
+        dataset = helpers.call_action(
+            'package_create',
+            context=custom_helpers._get_context(context),
+            name='syndicated_dataset',
+            extras=[
+                {'key': 'syndicate', 'value': 'true'},
+                {'key': 'syndicated_id', 'value': syndicated_id},
+            ],
+            resources=[
+                {'upload': custom_helpers.test_upload_file,
+                 'url': 'test_file.txt',
+                 'url_type': 'upload',
+                 'format': 'txt',
+                 'name': 'test_file.txt',
+                },
+            ]
+        )
+
+        nose.tools.assert_equal(2, len(helpers.call_action('package_list')))
+
+        with patch('ckanext.syndicate.tasks.get_target') as mock_target:
+            # Mock API
+            mock_target.return_value = ckanapi.TestAppCKAN(
+                self.app, apikey=self.user['apikey'])
+
+            # Test syncing update
+            sync_package(dataset['id'], 'dataset/update')
+
+        # Expect the remote package to be updated
+        syndicated = helpers.call_action(
+            'package_show',
+            context=custom_helpers._get_context(context),
+            id=syndicated_id,
+        )
+
+        # Expect the id of the syndicated package to match the metadata
+        # syndicated_id in the source package.
+        nose.tools.assert_equal(syndicated['id'], syndicated_id)
+
+        # Test the local the local resources URL has been updated
+        resources = syndicated['resources']
+        nose.tools.assert_equal(len(resources), 1)
+        remote_resource_url = resources[0]['url']
+        local_resource_url = dataset['resources'][0]['url']
+        nose.tools.assert_equal(local_resource_url, remote_resource_url)

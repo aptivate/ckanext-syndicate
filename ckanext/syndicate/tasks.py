@@ -1,21 +1,59 @@
 import logging
 import ckanapi
+import os
 
 from pylons import config
 
 import ckan.plugins.toolkit as toolkit
 from ckan.lib.celery_app import celery
-from ckan.lib.helpers import get_pkg_dict_extra
+from ckan.lib.helpers import get_pkg_dict_extra, url_for
+from ckanext.syndicate.plugin import SYNDICATE_FLAG
 
 logger = logging.getLogger(__name__)
 
 SYNDICATED_ID_EXTRA = 'syndicated_id'
-
+SYNDICATED_NAME_PREFIX = 'test'
 
 @celery.task(name='syndicate.sync_package')
-def sync_package_task(package, site_url):
-    return sync_package(package, site_url)
+def sync_package_task(package, action, ckan_ini_filepath):
+    logger = sync_package_task.get_logger()
+    load_config(ckan_ini_filepath)
+    register_translator()
+    logger.info("Sync package %s, with action %s" % (package, action))
+    return sync_package(package, action)
 
+
+# TODO: why mp this
+# enable celery logging for when you run nosetests -s
+log = logging.getLogger('ckanext.syndicate.tasks')
+def get_logger():
+    return log
+sync_package_task.get_logger = get_logger
+
+def load_config(ckan_ini_filepath):
+    import paste.deploy
+    config_abs_path = os.path.abspath(ckan_ini_filepath)
+    conf = paste.deploy.appconfig('config:' + config_abs_path)
+    import ckan
+    ckan.config.environment.load_environment(conf.global_conf,
+                                             conf.local_conf)
+
+def register_translator():
+    # https://github.com/ckan/ckanext-archiver/blob/master/ckanext/archiver/bin/common.py
+    # If not set (in cli access), patch the a translator with a mock, so the
+    # _() functions in logic layer don't cause failure.
+    from paste.registry import Registry
+    from pylons import translator
+    from ckan.lib.cli import MockTranslator
+    if 'registery' not in globals():
+        global registry
+        registry = Registry()
+        registry.prepare()
+
+    if 'translator_obj' not in globals():
+        global translator_obj
+        translator_obj = MockTranslator()
+        registry.register(translator, translator_obj)
 
 def get_target():
     ckan_url = config.get('ckan.syndicate.ckan_url')
@@ -26,13 +64,27 @@ def get_target():
     return ckan
 
 
-def sync_package(package_id, site_url):
+def filter_extras(extras):
+    extras_dict = dict([(o['key'], o['value']) for o in extras])
+    del extras_dict[SYNDICATE_FLAG]
+    return [{'key': k, 'value': v} for (k, v) in extras_dict.iteritems()]
+
+
+def filter_resources(resources):
+    return [
+        {'url': r['url'], 'name': r['name']} for r in resources
+    ]
+
+
+def sync_package(package_id, action, ckan_ini_filepath=None):
     logger.info('sync package {0}'.format(package_id))
 
     # load the package at run of time task (rather than use package state at
     # time of task creation).
-    # TODO: what user does the task access CKAN with?
-    context={'ignore_auth': True}
+    from ckan import model
+    context = {'model': model, 'ignore_auth': True, 'session': model.Session,
+                'use_cache': False, 'validate': False}
+
     params={
         'id': package_id,
     }
@@ -41,29 +93,58 @@ def sync_package(package_id, site_url):
             context,
             params,
         )
+
     # attempt to get the remote package
     ckan = get_target()
 
-    syndicated_id = get_pkg_dict_extra(package, SYNDICATED_ID_EXTRA)
-    name_or_id = syndicated_id if syndicated_id else package['name']
-
-    try:
-        remote_package = ckan.action.package_show(id=name_or_id)
-    except ckanapi.NotFound:
-        logger.info('no syndicated package with id: "%s"' % syndicated_id)
+    if action == 'dataset/create':
+        # Create a new package based on the local instance
         new_package_data = dict(package)
         del new_package_data['id']
-        remote_package = ckan.action.package_create(**new_package_data)
 
-    # set the target package id on the source package
-    extras = package['extras']
-    # TODO: updating extras
+        new_package_data['name'] = "%s-%s" % (
+            SYNDICATED_NAME_PREFIX,
+            new_package_data['name'])
+
+        new_package_data['extras']  = filter_extras(new_package_data['extras'])
+        new_package_data['resources'] = filter_resources(package['resources'])
+        try:
+            remote_package = ckan.action.package_create(**new_package_data)
+            set_syndicated_id(package, remote_package['id'])
+        except toolkit.ValidationError as e:
+            if 'That URL is already in use.' in e.error_dict.get('name', []):
+                logger.info('package with name %s already exists"' % new_package_data['name'])
+
+    elif action == 'dataset/update':
+        try:
+            syndicated_id = get_pkg_dict_extra(package, SYNDICATED_ID_EXTRA)
+            updated_package = dict(package)
+            # Keep the existing remote ID and Name
+            del updated_package['id']
+            del updated_package['name']
+
+            updated_package['extras'] = filter_extras(package['extras'])
+            updated_package['resources'] = filter_resources(package['resources'])
+            remote_package = ckan.action.package_update(
+                    id=syndicated_id,
+                    **updated_package
+                )
+        except ckanapi.NotFound:
+            logger.info('no syndicated package with id: "%s"' % syndicated_id)
+        else:
+            remote_package
+    else:
+        raise Exception()
+
+
+def set_syndicated_id(local_package, remote_package_id):
+    """ Set the remote package id on the local package """
+    extras = local_package['extras']
     extras_dict = dict([(o['key'], o['value']) for o in extras])
-    extras_dict.update({SYNDICATED_ID_EXTRA: remote_package['id']})
+    extras_dict.update({SYNDICATED_ID_EXTRA: remote_package_id})
     extras = [{'key': k, 'value': v} for (k, v) in extras_dict.iteritems()]
-    package['extras'] = extras
-
-    _update_package_extras(package)
+    local_package['extras'] = extras
+    _update_package_extras(local_package)
 
 
 def _update_package_extras(package):
