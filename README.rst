@@ -96,6 +96,12 @@ do::
     pip install -r dev-requirements.txt
 
 
+
+Running celeryd for development with paster
+
+    paster --plugin=ckan celeryd run -c $CKAN_INI
+
+
 -----------------
 Running the Tests
 -----------------
