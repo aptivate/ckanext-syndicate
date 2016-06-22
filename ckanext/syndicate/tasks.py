@@ -6,13 +6,14 @@ from pylons import config
 
 import ckan.plugins.toolkit as toolkit
 from ckan.lib.celery_app import celery
-from ckan.lib.helpers import get_pkg_dict_extra, url_for
+from ckan.lib.helpers import get_pkg_dict_extra
 from ckanext.syndicate.plugin import SYNDICATE_FLAG
 
 logger = logging.getLogger(__name__)
 
 SYNDICATED_ID_EXTRA = 'syndicated_id'
 SYNDICATED_NAME_PREFIX = 'test'
+
 
 @celery.task(name='syndicate.sync_package')
 def sync_package_task(package, action, ckan_ini_filepath):
@@ -26,9 +27,12 @@ def sync_package_task(package, action, ckan_ini_filepath):
 # TODO: why mp this
 # enable celery logging for when you run nosetests -s
 log = logging.getLogger('ckanext.syndicate.tasks')
+
+
 def get_logger():
     return log
 sync_package_task.get_logger = get_logger
+
 
 def load_config(ckan_ini_filepath):
     import paste.deploy
@@ -37,6 +41,7 @@ def load_config(ckan_ini_filepath):
     import ckan
     ckan.config.environment.load_environment(conf.global_conf,
                                              conf.local_conf)
+
 
 def register_translator():
     # https://github.com/ckan/ckanext-archiver/blob/master/ckanext/archiver/bin/common.py
@@ -54,6 +59,7 @@ def register_translator():
         global translator_obj
         translator_obj = MockTranslator()
         registry.register(translator, translator_obj)
+
 
 def get_target():
     ckan_url = config.get('ckan.syndicate.ckan_url')
@@ -83,16 +89,15 @@ def sync_package(package_id, action, ckan_ini_filepath=None):
     # time of task creation).
     from ckan import model
     context = {'model': model, 'ignore_auth': True, 'session': model.Session,
-                'use_cache': False, 'validate': False}
+               'use_cache': False, 'validate': False}
 
-    params={
+    params = {
         'id': package_id,
     }
-    package = toolkit.get_action(
-        'package_show')(
-            context,
-            params,
-        )
+    package = toolkit.get_action('package_show')(
+        context,
+        params,
+    )
 
     if action == 'dataset/create':
         _create_package(package)
@@ -123,7 +128,8 @@ def _create_package(package):
         set_syndicated_id(package, remote_package['id'])
     except toolkit.ValidationError as e:
         if 'That URL is already in use.' in e.error_dict.get('name', []):
-            logger.info('package with name %s already exists"' % new_package_data['name'])
+            logger.info("package with name '{0}' already exists".format(
+                new_package_data['name']))
 
 
 def _update_package(package):
