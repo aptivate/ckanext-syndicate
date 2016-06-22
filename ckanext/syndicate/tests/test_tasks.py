@@ -4,9 +4,11 @@ from mock import patch
 
 import ckanapi
 
+import ckan.logic as logic
 import ckan.tests.helpers as helpers
 import ckan.tests.factories as factories
 from ckan.lib.helpers import get_pkg_dict_extra
+
 import ckanext.syndicate.tests.helpers as custom_helpers
 
 from ckanext.syndicate.tasks import sync_package
@@ -193,3 +195,44 @@ class TestSyncPackageTask(custom_helpers.FunctionalTestBaseClass):
         # Expect the id of the syndicated package to match the metadata
         # syndicated_id in the source package.
         nose.tools.assert_equal(syndicated['notes'], updated['notes'])
+
+    def test_delete_package(self):
+        context = {
+            'user': self.user['name'],
+        }
+
+        # Create a dummy remote dataset
+        remote_dataset = helpers.call_action(
+            'package_create',
+            context=custom_helpers._get_context(context),
+            name='remote_dataset',
+        )
+
+        syndicated_id = remote_dataset['id']
+
+        # Create the local syndicated dataset, pointing to the dummy remote
+        dataset = helpers.call_action(
+            'package_create',
+            context=custom_helpers._get_context(context),
+            name='syndicated_dataset',
+            extras=[
+                {'key': 'syndicate', 'value': 'true'},
+                {'key': 'syndicated_id', 'value': syndicated_id},
+            ],
+        )
+
+        nose.tools.assert_equal(2, len(helpers.call_action('package_list')))
+
+        with patch('ckanext.syndicate.tasks.get_target') as mock_target:
+            mock_target.return_value = ckanapi.TestAppCKAN(
+                self.app, apikey=self.user['apikey'])
+
+            sync_package(dataset['id'], 'dataset/delete')
+
+        remote_dataset = helpers.call_action(
+            'package_show',
+            context={'ignore_auth': True},
+            id=syndicated_id
+        )
+
+        nose.tools.assert_equal(remote_dataset['state'], 'deleted')

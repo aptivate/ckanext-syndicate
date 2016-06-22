@@ -99,6 +99,8 @@ def sync_package(package_id, action, ckan_ini_filepath=None):
 
     elif action == 'dataset/update':
         _update_package(package)
+    elif action == 'dataset/delete':
+        _delete_package(package)
     else:
         raise Exception()
 
@@ -149,6 +151,15 @@ def _update_package(package):
         logger.info('no syndicated package with id: "%s"' % syndicated_id)
     else:
         remote_package
+
+
+def _delete_package(package):
+    syndicated_id = get_pkg_dict_extra(package, SYNDICATED_ID_EXTRA)
+
+    ckan = get_target()
+
+    ckan.action.package_delete(
+        id=syndicated_id)
 
 
 def set_syndicated_id(local_package, remote_package_id):
