@@ -16,7 +16,7 @@ SYNDICATE_FLAG = 'syndicate'
 
 def syndicate_task(package_id, topic):
     from pylons import config
-    ckan_ini_filepath = os.path.abspath(config.__file__)
+    ckan_ini_filepath = os.path.abspath(config['__file__'])
     celery.send_task(
         'syndicate.sync_package',
         args=[package_id, topic, ckan_ini_filepath],
