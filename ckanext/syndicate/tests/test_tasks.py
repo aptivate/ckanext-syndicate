@@ -152,3 +152,48 @@ class TestSyncPackageTask(custom_helpers.FunctionalTestBaseClass):
         remote_resource_url = resources[0]['url']
         local_resource_url = dataset['resources'][0]['url']
         nose.tools.assert_equal(local_resource_url, remote_resource_url)
+
+    def test_syndicate_existing_package(self):
+        context = {
+            'user': self.user['name'],
+        }
+
+        existing = helpers.call_action(
+            'package_create',
+            context=custom_helpers._get_context(context),
+            name='existing-dataset',
+            notes='The MapAction PowerPoint Map Pack contains a set of country level reference maps'
+        )
+
+        existing['extras'] = [
+            {'key': 'syndicate', 'value': 'true'},
+        ]
+
+        helpers.call_action(
+            'package_update',
+            context=custom_helpers._get_context(context),
+            **existing)
+
+        with patch('ckanext.syndicate.tasks.get_target') as mock_target:
+            mock_target.return_value = ckanapi.TestAppCKAN(
+                self.app, apikey=self.user['apikey'])
+
+            sync_package(existing['id'], 'dataset/update')
+
+        updated = helpers.call_action(
+            'package_show',
+            context=custom_helpers._get_context(context),
+            id=existing['id'],
+        )
+
+        syndicated_id = get_pkg_dict_extra(updated, 'syndicated_id')
+
+        syndicated = helpers.call_action(
+            'package_show',
+            context=custom_helpers._get_context(context),
+            id=syndicated_id,
+        )
+
+        # Expect the id of the syndicated package to match the metadata
+        # syndicated_id in the source package.
+        nose.tools.assert_equal(syndicated['notes'], updated['notes'])

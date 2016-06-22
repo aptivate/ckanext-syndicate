@@ -94,47 +94,61 @@ def sync_package(package_id, action, ckan_ini_filepath=None):
             params,
         )
 
-    # attempt to get the remote package
-    ckan = get_target()
-
     if action == 'dataset/create':
-        # Create a new package based on the local instance
-        new_package_data = dict(package)
-        del new_package_data['id']
-
-        new_package_data['name'] = "%s-%s" % (
-            SYNDICATED_NAME_PREFIX,
-            new_package_data['name'])
-
-        new_package_data['extras']  = filter_extras(new_package_data['extras'])
-        new_package_data['resources'] = filter_resources(package['resources'])
-        try:
-            remote_package = ckan.action.package_create(**new_package_data)
-            set_syndicated_id(package, remote_package['id'])
-        except toolkit.ValidationError as e:
-            if 'That URL is already in use.' in e.error_dict.get('name', []):
-                logger.info('package with name %s already exists"' % new_package_data['name'])
+        _create_package(package)
 
     elif action == 'dataset/update':
-        try:
-            syndicated_id = get_pkg_dict_extra(package, SYNDICATED_ID_EXTRA)
-            updated_package = dict(package)
-            # Keep the existing remote ID and Name
-            del updated_package['id']
-            del updated_package['name']
-
-            updated_package['extras'] = filter_extras(package['extras'])
-            updated_package['resources'] = filter_resources(package['resources'])
-            remote_package = ckan.action.package_update(
-                    id=syndicated_id,
-                    **updated_package
-                )
-        except ckanapi.NotFound:
-            logger.info('no syndicated package with id: "%s"' % syndicated_id)
-        else:
-            remote_package
+        _update_package(package)
     else:
         raise Exception()
+
+
+def _create_package(package):
+    ckan = get_target()
+
+    # Create a new package based on the local instance
+    new_package_data = dict(package)
+    del new_package_data['id']
+
+    new_package_data['name'] = "%s-%s" % (
+        SYNDICATED_NAME_PREFIX,
+        new_package_data['name'])
+
+    new_package_data['extras'] = filter_extras(new_package_data['extras'])
+    new_package_data['resources'] = filter_resources(package['resources'])
+    try:
+        remote_package = ckan.action.package_create(**new_package_data)
+        set_syndicated_id(package, remote_package['id'])
+    except toolkit.ValidationError as e:
+        if 'That URL is already in use.' in e.error_dict.get('name', []):
+            logger.info('package with name %s already exists"' % new_package_data['name'])
+
+
+def _update_package(package):
+    syndicated_id = get_pkg_dict_extra(package, SYNDICATED_ID_EXTRA)
+
+    if syndicated_id is None:
+        _create_package(package)
+        return
+
+    ckan = get_target()
+
+    try:
+        updated_package = dict(package)
+        # Keep the existing remote ID and Name
+        del updated_package['id']
+        del updated_package['name']
+
+        updated_package['extras'] = filter_extras(package['extras'])
+        updated_package['resources'] = filter_resources(package['resources'])
+        remote_package = ckan.action.package_update(
+            id=syndicated_id,
+            **updated_package
+        )
+    except ckanapi.NotFound:
+        logger.info('no syndicated package with id: "%s"' % syndicated_id)
+    else:
+        remote_package
 
 
 def set_syndicated_id(local_package, remote_package_id):
@@ -178,6 +192,3 @@ def _update_search_index(package_id, log):
     package = toolkit.get_action('package_show')(context_, {'id': package_id})
     package_index.index_package(package, defer_commit=False)
     log.info('Search indexed %s', package['name'])
-
-
-
