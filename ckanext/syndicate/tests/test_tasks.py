@@ -1,7 +1,5 @@
 import nose.tools
 
-from pylons import config
-
 from mock import patch
 
 import ckanapi
@@ -21,7 +19,7 @@ class TestSyncPackageTask(custom_helpers.FunctionalTestBaseClass):
         self.user = factories.User()
 
     def test_create_package(self):
-        context={
+        context = {
             'user': self.user['name'],
         }
 
@@ -32,27 +30,26 @@ class TestSyncPackageTask(custom_helpers.FunctionalTestBaseClass):
             extras=[
                 {'key': 'syndicate', 'value': 'true'},
             ],
-            resources=[
-                {'upload': custom_helpers.test_upload_file,
-                 'url': 'test_file.txt',
-                 'url_type': 'upload',
-                 'format': 'txt',
-                 'name': 'test_file.txt',
-                },
-                {'upload': custom_helpers.test_upload_file,
-                 'url': 'test_file1.txt',
-                 'url_type': 'upload',
-                 'format': 'txt',
-                 'name': 'test_file1.txt',
-                }
-            ],
+            resources=[{
+                'upload': custom_helpers.test_upload_file,
+                'url': 'test_file.txt',
+                'url_type': 'upload',
+                'format': 'txt',
+                'name': 'test_file.txt',
+            }, {
+                'upload': custom_helpers.test_upload_file,
+                'url': 'test_file1.txt',
+                'url_type': 'upload',
+                'format': 'txt',
+                'name': 'test_file1.txt',
+            }],
         )
         nose.tools.assert_equal(dataset['name'], 'syndicated_dataset')
 
         with patch('ckanext.syndicate.tasks.get_target') as mock_target:
             # Mock API
             mock_target.return_value = ckanapi.TestAppCKAN(
-                    self.app, apikey=self.user['apikey'])
+                self.app, apikey=self.user['apikey'])
 
             # Syndicate to our Test CKAN instance
             sync_package(dataset['id'], 'dataset/create')
@@ -80,7 +77,6 @@ class TestSyncPackageTask(custom_helpers.FunctionalTestBaseClass):
         # syndicated_id in the source package.
         nose.tools.assert_equal(syndicated['id'], syndicated_id)
 
-
         # Test links to resources on the source CKAN instace have been added
         resources = syndicated['resources']
         nose.tools.assert_equal(len(resources), 2)
@@ -93,7 +89,7 @@ class TestSyncPackageTask(custom_helpers.FunctionalTestBaseClass):
         nose.tools.assert_equal(local_resource_url, remote_resource_url)
 
     def test_update_package(self):
-        context={
+        context = {
             'user': self.user['name'],
         }
 
@@ -115,13 +111,13 @@ class TestSyncPackageTask(custom_helpers.FunctionalTestBaseClass):
                 {'key': 'syndicate', 'value': 'true'},
                 {'key': 'syndicated_id', 'value': syndicated_id},
             ],
-            resources=[
-                {'upload': custom_helpers.test_upload_file,
-                 'url': 'test_file.txt',
-                 'url_type': 'upload',
-                 'format': 'txt',
-                 'name': 'test_file.txt',
-                },
+            resources=[{
+                'upload': custom_helpers.test_upload_file,
+                'url': 'test_file.txt',
+                'url_type': 'upload',
+                'format': 'txt',
+                'name': 'test_file.txt',
+            },
             ]
         )
 
