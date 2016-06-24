@@ -51,7 +51,7 @@ class TestSyncPackageTask(custom_helpers.FunctionalTestBaseClass):
         with patch('ckanext.syndicate.tasks.get_target') as mock_target:
             # Mock API
             mock_target.return_value = ckanapi.TestAppCKAN(
-                self.app, apikey=self.user['apikey'])
+                self._get_test_app(), apikey=self.user['apikey'])
 
             # Syndicate to our Test CKAN instance
             sync_package(dataset['id'], 'dataset/create')
@@ -128,7 +128,7 @@ class TestSyncPackageTask(custom_helpers.FunctionalTestBaseClass):
         with patch('ckanext.syndicate.tasks.get_target') as mock_target:
             # Mock API
             mock_target.return_value = ckanapi.TestAppCKAN(
-                self.app, apikey=self.user['apikey'])
+                self._get_test_app(), apikey=self.user['apikey'])
 
             # Test syncing update
             sync_package(dataset['id'], 'dataset/update')
@@ -174,7 +174,7 @@ class TestSyncPackageTask(custom_helpers.FunctionalTestBaseClass):
 
         with patch('ckanext.syndicate.tasks.get_target') as mock_target:
             mock_target.return_value = ckanapi.TestAppCKAN(
-                self.app, apikey=self.user['apikey'])
+                self._get_test_app(), apikey=self.user['apikey'])
 
             sync_package(existing['id'], 'dataset/update')
 
@@ -215,7 +215,7 @@ class TestSyncPackageTask(custom_helpers.FunctionalTestBaseClass):
 
         with patch('ckanext.syndicate.tasks.get_target') as mock_target:
             mock_target.return_value = ckanapi.TestAppCKAN(
-                self.app, apikey=self.user['apikey'])
+                self._get_test_app(), apikey=self.user['apikey'])
 
             sync_package(existing['id'], 'dataset/update')
 
@@ -264,7 +264,7 @@ class TestSyncPackageTask(custom_helpers.FunctionalTestBaseClass):
 
         with patch('ckanext.syndicate.tasks.get_target') as mock_target:
             mock_target.return_value = ckanapi.TestAppCKAN(
-                self.app, apikey=self.user['apikey'])
+                self._get_test_app(), apikey=self.user['apikey'])
 
             sync_package(dataset['id'], 'dataset/delete')
 
