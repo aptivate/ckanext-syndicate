@@ -3,6 +3,7 @@ import os
 import ckan.plugins as plugins
 import ckan.plugins.toolkit as toolkit
 from ckan.lib.celery_app import celery
+from ckan.lib.helpers import asbool
 
 from pylons import config
 import ckan.model as model
@@ -62,7 +63,7 @@ class SyndicatePlugin(plugins.SingletonPlugin):
         if isinstance(entity, model.Package):
             topic = self._get_topic('dataset', operation)
 
-            if entity.extras.get(SYNDICATE_FLAG, 'false') == 'true':
+            if asbool(entity.extras.get(SYNDICATE_FLAG, 'false')):
                 syndicate_dataset(entity.id, topic)
 
     def _get_topic(self, prefix, operation):

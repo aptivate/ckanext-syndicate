@@ -1,5 +1,7 @@
 from mock import patch
 
+import uuid
+
 import ckan.model as model
 from ckan.model.domain_object import DomainObjectOperation
 from ckan.tests import factories, helpers
@@ -7,13 +9,18 @@ from ckan.tests import factories, helpers
 from ckanext.syndicate.plugin import SyndicatePlugin
 
 
-class TestNotify(helpers.FunctionalTestBase):
+class TestPlugin(helpers.FunctionalTestBase):
+    def setup(self):
+        super(TestPlugin, self).setup()
+        self.plugin = SyndicatePlugin()
+
+
+class TestNotify(TestPlugin):
     def setup(self):
         super(TestNotify, self).setup()
         dataset = factories.Dataset(extras=[{'key': 'syndicate', 'value': 'true'}])
 
         self.dataset = model.Package.get(dataset['id'])
-        self.plugin = SyndicatePlugin()
 
 
 class TestDatasetNotify(TestNotify):
@@ -38,6 +45,20 @@ class TestDatasetNotify(TestNotify):
             self.plugin.notify(self.dataset, DomainObjectOperation.deleted)
             mock_syndicate.assert_called_with(self.dataset.id,
                                               'dataset/delete')
+
+
+class TestSyndicateFlag(TestPlugin):
+    def test_syndicate_flag_with_capital_t(self):
+        dataset = model.Package()
+        dataset.id = str(uuid.uuid4())
+        dataset.extras = {'syndicate': 'True'}
+
+        syndicate_patch = patch('ckanext.syndicate.plugin.syndicate_dataset')
+
+        with syndicate_patch as mock_syndicate:
+            self.plugin.notify(dataset, DomainObjectOperation.new)
+            mock_syndicate.assert_called_with(dataset.id,
+                                              'dataset/create')
 
 
 class TestResourceNotify(TestNotify):
