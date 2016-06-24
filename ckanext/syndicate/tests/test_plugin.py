@@ -48,17 +48,29 @@ class TestDatasetNotify(TestNotify):
 
 
 class TestSyndicateFlag(TestPlugin):
+    def setup(self):
+        super(TestSyndicateFlag, self).setup()
+        self.dataset = model.Package()
+        self.dataset.id = str(uuid.uuid4())
+
     def test_syndicate_flag_with_capital_t(self):
-        dataset = model.Package()
-        dataset.id = str(uuid.uuid4())
-        dataset.extras = {'syndicate': 'True'}
+        self.dataset.extras = {'syndicate': 'True'}
 
         syndicate_patch = patch('ckanext.syndicate.plugin.syndicate_dataset')
 
         with syndicate_patch as mock_syndicate:
-            self.plugin.notify(dataset, DomainObjectOperation.new)
-            mock_syndicate.assert_called_with(dataset.id,
+            self.plugin.notify(self.dataset, DomainObjectOperation.new)
+            mock_syndicate.assert_called_with(self.dataset.id,
                                               'dataset/create')
+
+    def test_not_syndicated_when_flag_false(self):
+        self.dataset.extras = {'syndicate': 'false'}
+
+        syndicate_patch = patch('ckanext.syndicate.plugin.syndicate_dataset')
+
+        with syndicate_patch as mock_syndicate:
+            self.plugin.notify(self.dataset, DomainObjectOperation.new)
+            mock_syndicate.assert_not_called()
 
 
 class TestResourceNotify(TestNotify):
