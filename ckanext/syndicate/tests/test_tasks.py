@@ -196,6 +196,45 @@ class TestSyncPackageTask(custom_helpers.FunctionalTestBaseClass):
         # syndicated_id in the source package.
         nose.tools.assert_equal(syndicated['notes'], updated['notes'])
 
+    def test_syndicate_existing_package_with_stale_syndicated_id(self):
+        context = {
+            'user': self.user['name'],
+        }
+
+        existing = helpers.call_action(
+            'package_create',
+            context=custom_helpers._get_context(context),
+            name='existing-dataset',
+            notes='The MapAction PowerPoint Map Pack contains a set of country level reference maps',
+            extras=[
+                {'key': 'syndicate', 'value': 'true'},
+                {'key': 'syndicated_id',
+                 'value': '87f7a229-46d0-4171-bfb6-048c622adcdc'}
+            ]
+        )
+
+        with patch('ckanext.syndicate.tasks.get_target') as mock_target:
+            mock_target.return_value = ckanapi.TestAppCKAN(
+                self.app, apikey=self.user['apikey'])
+
+            sync_package(existing['id'], 'dataset/update')
+
+        updated = helpers.call_action(
+            'package_show',
+            context=custom_helpers._get_context(context),
+            id=existing['id'],
+        )
+
+        syndicated_id = get_pkg_dict_extra(updated, 'syndicated_id')
+
+        syndicated = helpers.call_action(
+            'package_show',
+            context=custom_helpers._get_context(context),
+            id=syndicated_id,
+        )
+
+        nose.tools.assert_equal(syndicated['notes'], updated['notes'])
+
     def test_delete_package(self):
         context = {
             'user': self.user['name'],

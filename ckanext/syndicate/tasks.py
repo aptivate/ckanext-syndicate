@@ -149,14 +149,12 @@ def _update_package(package):
 
         updated_package['extras'] = filter_extras(package['extras'])
         updated_package['resources'] = filter_resources(package['resources'])
-        remote_package = ckan.action.package_update(
+        ckan.action.package_update(
             id=syndicated_id,
             **updated_package
         )
     except ckanapi.NotFound:
-        logger.info('no syndicated package with id: "%s"' % syndicated_id)
-    else:
-        remote_package
+        _create_package(package)
 
 
 def _delete_package(package):
