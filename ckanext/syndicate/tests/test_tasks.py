@@ -4,7 +4,6 @@ from mock import patch
 
 import ckanapi
 
-import ckan.logic as logic
 import ckan.tests.helpers as helpers
 import ckan.tests.factories as factories
 from ckan.lib.helpers import get_pkg_dict_extra
