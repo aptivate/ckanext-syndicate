@@ -52,19 +52,30 @@ class SyndicatePlugin(plugins.SingletonPlugin):
             return
 
         if isinstance(entity, model.Resource):
-            topic = self._get_topic('resource', operation)
-
-            dataset = model.Package.get(entity.get_package_id())
-
-            syndicate_resource(dataset.id, entity.id, topic)
-
+            self._syndicate_resource(entity, operation)
             return
 
         if isinstance(entity, model.Package):
-            topic = self._get_topic('dataset', operation)
+            self._syndicate_dataset(entity, operation)
 
-            if asbool(entity.extras.get(SYNDICATE_FLAG, 'false')):
-                syndicate_dataset(entity.id, topic)
+    def _syndicate_resource(self, resource, operation):
+        topic = self._get_topic('resource', operation)
+
+        dataset = model.Package.get(resource.get_package_id())
+
+        if self._syndicate(dataset):
+            syndicate_resource(dataset.id, resource.id, topic)
+
+        return
+
+    def _syndicate_dataset(self, dataset, operation):
+        topic = self._get_topic('dataset', operation)
+
+        if self._syndicate(dataset):
+            syndicate_dataset(dataset.id, topic)
+
+    def _syndicate(self, dataset):
+        return asbool(dataset.extras.get(SYNDICATE_FLAG, 'false'))
 
     def _get_topic(self, prefix, operation):
         topics = {

@@ -1,14 +1,24 @@
-'''Test helper functions and classes.'''
 import os
 import cgi
+
+import nose.tools
+
 import ckan.tests.helpers as helpers
 import ckan.plugins as plugins
+
 
 from StringIO import StringIO
 
 test_file = StringIO()
 test_file.name = 'test_file.txt'
 test_file.write('test')
+
+assert_equal = nose.tools.assert_equal
+assert_false = nose.tools.assert_false
+assert_is_not_none = nose.tools.assert_is_not_none
+assert_raises = nose.tools.assert_raises
+assert_regexp_matches = nose.tools.assert_regexp_matches
+assert_true = nose.tools.assert_true
 
 
 class UploadLocalFileStorage(cgi.FieldStorage):

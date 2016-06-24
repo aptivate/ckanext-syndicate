@@ -1,12 +1,14 @@
 from mock import patch
 
-import uuid
-
 import ckan.model as model
 from ckan.model.domain_object import DomainObjectOperation
 from ckan.tests import factories, helpers
 
 from ckanext.syndicate.plugin import SyndicatePlugin
+
+from ckanext.syndicate.tests.helpers import (
+    assert_false,
+)
 
 
 class TestPlugin(helpers.FunctionalTestBase):
@@ -50,8 +52,8 @@ class TestDatasetNotify(TestNotify):
 class TestSyndicateFlag(TestPlugin):
     def setup(self):
         super(TestSyndicateFlag, self).setup()
-        self.dataset = model.Package()
-        self.dataset.id = str(uuid.uuid4())
+        dataset = factories.Dataset()
+        self.dataset = model.Package.get(dataset['id'])
 
     def test_syndicate_flag_with_capital_t(self):
         self.dataset.extras = {'syndicate': 'True'}
@@ -70,14 +72,27 @@ class TestSyndicateFlag(TestPlugin):
 
         with syndicate_patch as mock_syndicate:
             self.plugin.notify(self.dataset, DomainObjectOperation.new)
-            mock_syndicate.assert_not_called()
+            assert_false(mock_syndicate.called)
 
     def test_not_syndicated_when_flag_missing(self):
         syndicate_patch = patch('ckanext.syndicate.plugin.syndicate_dataset')
 
         with syndicate_patch as mock_syndicate:
             self.plugin.notify(self.dataset, DomainObjectOperation.new)
-            mock_syndicate.assert_not_called()
+            assert_false(mock_syndicate.called)
+
+    def test_resource_not_syndicated_when_flag_false(self):
+        self.dataset.extras = {'syndicate': 'false'}
+
+        syndicate_patch = patch('ckanext.syndicate.plugin.syndicate_resource')
+
+        resource_dict = factories.Resource(package_id=self.dataset.id)
+        resource = model.Resource.get(resource_dict['id'])
+
+        with syndicate_patch as mock_syndicate:
+            self.plugin.notify(resource, DomainObjectOperation.new)
+
+            assert_false(mock_syndicate.called)
 
 
 class TestResourceNotify(TestNotify):
