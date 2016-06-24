@@ -72,6 +72,13 @@ class TestSyndicateFlag(TestPlugin):
             self.plugin.notify(self.dataset, DomainObjectOperation.new)
             mock_syndicate.assert_not_called()
 
+    def test_not_syndicated_when_flag_missing(self):
+        syndicate_patch = patch('ckanext.syndicate.plugin.syndicate_dataset')
+
+        with syndicate_patch as mock_syndicate:
+            self.plugin.notify(self.dataset, DomainObjectOperation.new)
+            mock_syndicate.assert_not_called()
+
 
 class TestResourceNotify(TestNotify):
     def setup(self):
