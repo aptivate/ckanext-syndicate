@@ -27,3 +27,9 @@ class TestNotify(unittest.TestCase):
             self.plugin.notify(self.entity, DomainObjectOperation.changed)
             mock_syndicate.assert_called_with(self.entity.id,
                                               'dataset/update')
+
+    def test_syndicates_task_for_dataset_delete(self):
+        with self.syndicate_patch as mock_syndicate:
+            self.plugin.notify(self.entity, DomainObjectOperation.deleted)
+            mock_syndicate.assert_called_with(self.entity.id,
+                                              'dataset/delete')
