@@ -38,8 +38,6 @@ class SyndicatePlugin(plugins.SingletonPlugin):
     ## Based on ckanext-webhooks plugin
     #IDomainObjectNotification & #IResourceURLChange
     def notify(self, entity, operation=None):
-        context = {'model': model, 'ignore_auth': True, 'defer_commit': True}
-
         if isinstance(entity, model.Resource):
             if not operation:
                 #This happens on IResourceURLChange, but I'm not sure whether
