@@ -160,6 +160,8 @@ def _update_package(package):
 
 
 def _delete_package(package):
+    # TODO: Check when this gets called. Deleting a dataset just sets the
+    # state to deleted so effectively an update
     syndicated_id = get_pkg_dict_extra(package, SYNDICATED_ID_EXTRA)
 
     ckan = get_target()
