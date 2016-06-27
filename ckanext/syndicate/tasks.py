@@ -44,6 +44,7 @@ log = logging.getLogger('ckanext.syndicate.tasks')
 def get_logger():
     return log
 sync_package_task.get_logger = get_logger
+sync_resource_task.get_logger = get_logger
 
 
 def load_config(ckan_ini_filepath):
