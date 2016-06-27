@@ -23,7 +23,6 @@ class TestSyncTask(FunctionalTestBaseClass):
         super(TestSyncTask, self).setup()
         self.user = factories.User()
 
-
     @helpers.change_config('ckan.syndicate.name_prefix',
                            'test')
     @helpers.change_config('ckan.syndicate.organization',
