@@ -7,12 +7,13 @@ from pylons import config
 import ckan.plugins.toolkit as toolkit
 from ckan.lib.celery_app import celery
 from ckan.lib.helpers import get_pkg_dict_extra
-from ckanext.syndicate.plugin import SYNDICATE_FLAG
+from ckanext.syndicate.plugin import (
+    get_syndicate_flag,
+    get_syndicated_id,
+    get_syndicated_name_prefix,
+)
 
 logger = logging.getLogger(__name__)
-
-SYNDICATED_ID_EXTRA = 'syndicated_id'
-SYNDICATED_NAME_PREFIX = 'test'
 
 
 @celery.task(name='syndicate.sync_package')
@@ -81,7 +82,7 @@ def get_target():
 
 def filter_extras(extras):
     extras_dict = dict([(o['key'], o['value']) for o in extras])
-    del extras_dict[SYNDICATE_FLAG]
+    del extras_dict[get_syndicate_flag()]
     return [{'key': k, 'value': v} for (k, v) in extras_dict.iteritems()]
 
 
@@ -142,7 +143,7 @@ def _create_package(package):
     del new_package_data['id']
 
     new_package_data['name'] = "%s-%s" % (
-        SYNDICATED_NAME_PREFIX,
+        get_syndicated_name_prefix(),
         new_package_data['name'])
 
     new_package_data['extras'] = filter_extras(new_package_data['extras'])
@@ -157,7 +158,7 @@ def _create_package(package):
 
 
 def _update_package(package):
-    syndicated_id = get_pkg_dict_extra(package, SYNDICATED_ID_EXTRA)
+    syndicated_id = get_pkg_dict_extra(package, get_syndicated_id())
 
     if syndicated_id is None:
         _create_package(package)
@@ -184,7 +185,7 @@ def _update_package(package):
 def _delete_package(package):
     # TODO: Check when this gets called. Deleting a dataset just sets the
     # state to deleted so effectively an update
-    syndicated_id = get_pkg_dict_extra(package, SYNDICATED_ID_EXTRA)
+    syndicated_id = get_pkg_dict_extra(package, get_syndicated_id())
 
     ckan = get_target()
 
@@ -196,7 +197,7 @@ def set_syndicated_id(local_package, remote_package_id):
     """ Set the remote package id on the local package """
     extras = local_package['extras']
     extras_dict = dict([(o['key'], o['value']) for o in extras])
-    extras_dict.update({SYNDICATED_ID_EXTRA: remote_package_id})
+    extras_dict.update({get_syndicated_id(): remote_package_id})
     extras = [{'key': k, 'value': v} for (k, v) in extras_dict.iteritems()]
     local_package['extras'] = extras
     _update_package_extras(local_package)

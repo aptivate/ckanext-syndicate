@@ -12,7 +12,16 @@ from ckan.model.domain_object import DomainObjectOperation
 import uuid
 
 
-SYNDICATE_FLAG = 'syndicate'
+def get_syndicate_flag():
+    return config.get('ckan.syndicate.flag', 'syndicate')
+
+
+def get_syndicated_id():
+    return config.get('ckan.syndicate.id', 'syndicated_id')
+
+
+def get_syndicated_name_prefix():
+    return config.get('ckan.syndicate.name_prefix', '')
 
 
 def syndicate_dataset(package_id, topic):
@@ -75,7 +84,7 @@ class SyndicatePlugin(plugins.SingletonPlugin):
             syndicate_dataset(dataset.id, topic)
 
     def _syndicate(self, dataset):
-        return asbool(dataset.extras.get(SYNDICATE_FLAG, 'false'))
+        return asbool(dataset.extras.get(get_syndicate_flag(), 'false'))
 
     def _get_topic(self, prefix, operation):
         topics = {

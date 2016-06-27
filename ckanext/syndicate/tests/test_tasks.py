@@ -23,6 +23,8 @@ class TestSyncTask(FunctionalTestBaseClass):
         super(TestSyncTask, self).setup()
         self.user = factories.User()
 
+    @helpers.change_config('ckan.syndicate.name_prefix',
+                           'test')
     def test_create_package(self):
         context = {
             'user': self.user['name'],
@@ -81,6 +83,7 @@ class TestSyncTask(FunctionalTestBaseClass):
         # Expect the id of the syndicated package to match the metadata
         # syndicated_id in the source package.
         assert_equal(syndicated['id'], syndicated_id)
+        assert_equal(syndicated['name'], 'test-syndicated_dataset')
 
         # Test links to resources on the source CKAN instace have been added
         resources = syndicated['resources']
