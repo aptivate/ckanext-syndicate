@@ -88,7 +88,8 @@ class SyndicatePlugin(plugins.SingletonPlugin):
             syndicate_dataset(dataset.id, topic)
 
     def _syndicate(self, dataset):
-        return asbool(dataset.extras.get(get_syndicate_flag(), 'false'))
+        return (not dataset.private and
+                asbool(dataset.extras.get(get_syndicate_flag(), 'false')))
 
     def _get_topic(self, prefix, operation):
         topics = {

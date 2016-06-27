@@ -36,6 +36,13 @@ class TestDatasetNotify(TestNotify):
             mock_syndicate.assert_called_with(self.dataset.id,
                                               'dataset/create')
 
+    def test_does_not_syndicate_for_private_dataset(self):
+        self.dataset.private = True
+
+        with self.syndicate_patch as mock_syndicate:
+            self.plugin.notify(self.dataset, DomainObjectOperation.new)
+            assert_false(mock_syndicate.called)
+
     def test_syndicates_task_for_update(self):
         with self.syndicate_patch as mock_syndicate:
             self.plugin.notify(self.dataset, DomainObjectOperation.changed)
