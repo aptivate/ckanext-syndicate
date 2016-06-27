@@ -11,6 +11,7 @@ from ckanext.syndicate.plugin import (
     get_syndicate_flag,
     get_syndicated_id,
     get_syndicated_name_prefix,
+    get_syndicated_organization,
 )
 
 logger = logging.getLogger(__name__)
@@ -23,6 +24,7 @@ def sync_package_task(package, action, ckan_ini_filepath):
     register_translator()
     logger.info("Sync package %s, with action %s" % (package, action))
     return sync_package(package, action)
+
 
 @celery.task(name='syndicate.sync_resource')
 def sync_resource_task(package_id, resource_id, action, ckan_ini_filepath):
@@ -117,7 +119,7 @@ def sync_package(package_id, action, ckan_ini_filepath=None):
     elif action == 'dataset/delete':
         _delete_package(package)
     else:
-        raise Exception()
+        raise Exception('Unsupported action {0}'.format(action))
 
 
 def sync_resource(dataset_id, resource_id, action):
@@ -148,6 +150,11 @@ def _create_package(package):
 
     new_package_data['extras'] = filter_extras(new_package_data['extras'])
     new_package_data['resources'] = filter_resources(package['resources'])
+    new_package_data['owner_org'] = get_syndicated_organization()
+    del new_package_data['organization']
+
+    logger.info(new_package_data)
+
     try:
         remote_package = ckan.action.package_create(**new_package_data)
         set_syndicated_id(package, remote_package['id'])

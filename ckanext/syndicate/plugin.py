@@ -24,6 +24,10 @@ def get_syndicated_name_prefix():
     return config.get('ckan.syndicate.name_prefix', '')
 
 
+def get_syndicated_organization():
+    return config.get('ckan.syndicate.organization', None)
+
+
 def syndicate_dataset(package_id, topic):
     ckan_ini_filepath = os.path.abspath(config['__file__'])
     celery.send_task(

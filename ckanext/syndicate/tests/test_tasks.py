@@ -23,9 +23,31 @@ class TestSyncTask(FunctionalTestBaseClass):
         super(TestSyncTask, self).setup()
         self.user = factories.User()
 
+
     @helpers.change_config('ckan.syndicate.name_prefix',
                            'test')
+    @helpers.change_config('ckan.syndicate.organization',
+                           'remote-org')
     def test_create_package(self):
+        local_org = factories.Organization(user=self.user,
+                                           name='local-org')
+        remote_org = factories.Organization(user=self.user,
+                                            name='remote-org')
+
+        helpers.call_action(
+            'member_create',
+            id=local_org['id'],
+            object=self.user['id'],
+            object_type='user',
+            capacity='editor')
+
+        helpers.call_action(
+            'member_create',
+            id=remote_org['id'],
+            object=self.user['id'],
+            object_type='user',
+            capacity='editor')
+
         context = {
             'user': self.user['name'],
         }
@@ -34,6 +56,7 @@ class TestSyncTask(FunctionalTestBaseClass):
             'package_create',
             context=context,
             name='syndicated_dataset',
+            owner_org=local_org['id'],
             extras=[
                 {'key': 'syndicate', 'value': 'true'},
             ],
@@ -84,6 +107,7 @@ class TestSyncTask(FunctionalTestBaseClass):
         # syndicated_id in the source package.
         assert_equal(syndicated['id'], syndicated_id)
         assert_equal(syndicated['name'], 'test-syndicated_dataset')
+        assert_equal(syndicated['owner_org'], remote_org['id'])
 
         # Test links to resources on the source CKAN instace have been added
         resources = syndicated['resources']
