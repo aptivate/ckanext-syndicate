@@ -23,6 +23,15 @@ def sync_package_task(package, action, ckan_ini_filepath):
     logger.info("Sync package %s, with action %s" % (package, action))
     return sync_package(package, action)
 
+@celery.task(name='syndicate.sync_resource')
+def sync_resource_task(package_id, resource_id, action, ckan_ini_filepath):
+    logger = sync_resource_task.get_logger()
+    load_config(ckan_ini_filepath)
+    register_translator()
+    logger.info('Sync package {0} resource {1}, with action {2}'.format(
+        package_id, resource_id, action))
+
+    return sync_resource(package_id, resource_id, action)
 
 # TODO: why mp this
 # enable celery logging for when you run nosetests -s
@@ -108,6 +117,21 @@ def sync_package(package_id, action, ckan_ini_filepath=None):
         _delete_package(package)
     else:
         raise Exception()
+
+
+def sync_resource(dataset_id, resource_id, action):
+    from ckan import model
+    context = {'model': model, 'ignore_auth': True, 'session': model.Session,
+               'use_cache': False, 'validate': False}
+
+    dataset_dict = toolkit.get_action('package_show')(
+        context,
+        data_dict={
+            'id': dataset_id,
+        }
+    )
+
+    _update_package(dataset_dict)
 
 
 def _create_package(package):

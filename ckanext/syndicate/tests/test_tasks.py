@@ -14,13 +14,13 @@ from ckanext.syndicate.tests.helpers import (
     _get_context,
 )
 
-from ckanext.syndicate.tasks import sync_package
+from ckanext.syndicate.tasks import sync_package, sync_resource
 
 
-class TestSyncPackageTask(FunctionalTestBaseClass):
+class TestSyncTask(FunctionalTestBaseClass):
 
     def setup(self):
-        super(TestSyncPackageTask, self).setup()
+        super(TestSyncTask, self).setup()
         self.user = factories.User()
 
     def test_create_package(self):
@@ -278,3 +278,65 @@ class TestSyncPackageTask(FunctionalTestBaseClass):
         )
 
         assert_equal(remote_dataset['state'], 'deleted')
+
+    def test_add_resource(self):
+        context = {
+            'user': self.user['name'],
+        }
+
+        remote_dataset = helpers.call_action(
+            'package_create',
+            context=_get_context(context),
+            name='remote_dataset',
+        )
+
+        syndicated_id = remote_dataset['id']
+
+        # Create the local syndicated dataset, pointing to the dummy remote
+        dataset = helpers.call_action(
+            'package_create',
+            context=_get_context(context),
+            name='syndicated_dataset',
+            extras=[
+                {'key': 'syndicate', 'value': 'true'},
+                {'key': 'syndicated_id', 'value': syndicated_id},
+            ],
+        )
+
+        assert_equal(len(dataset['resources']), 0)
+
+        with patch('ckanext.syndicate.tasks.get_target') as mock_target:
+            # Mock API
+            mock_target.return_value = ckanapi.TestAppCKAN(
+                self._get_test_app(), apikey=self.user['apikey'])
+
+            resource = helpers.call_action(
+                'resource_create',
+                package_id=dataset['id'],
+                upload=test_upload_file,
+                url='test_file.txt',
+                format='txt',
+                name='test_file.txt')
+
+            dataset = helpers.call_action(
+                'package_show',
+                context=_get_context(context),
+                id=dataset['id'])
+
+            # Test syncing update
+            sync_resource(dataset['id'], resource['id'], 'resource/create')
+
+        # Expect the remote package to be updated
+        syndicated = helpers.call_action(
+            'package_show',
+            context=_get_context(context),
+            id=syndicated_id,
+        )
+
+        resources = syndicated['resources']
+        assert_equal(len(resources), 1)
+
+        remote_resource_url = resources[0]['url']
+        local_resource_url = dataset['resources'][0]['url']
+
+        assert_equal(local_resource_url, remote_resource_url)
