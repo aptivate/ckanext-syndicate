@@ -49,11 +49,10 @@ class TestDatasetNotify(TestNotify):
             mock_syndicate.assert_called_with(self.dataset.id,
                                               'dataset/update')
 
-    def test_syndicates_task_for_delete(self):
+    def test_does_not_syndicate_for_delete(self):
         with self.syndicate_patch as mock_syndicate:
             self.plugin.notify(self.dataset, DomainObjectOperation.deleted)
-            mock_syndicate.assert_called_with(self.dataset.id,
-                                              'dataset/delete')
+            assert_false(mock_syndicate.called)
 
 
 class TestSyndicateFlag(TestPlugin):

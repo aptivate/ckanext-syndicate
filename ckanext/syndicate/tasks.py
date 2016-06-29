@@ -106,8 +106,6 @@ def sync_package(package_id, action, ckan_ini_filepath=None):
 
     elif action == 'dataset/update':
         _update_package(package)
-    elif action == 'dataset/delete':
-        _delete_package(package)
     else:
         raise Exception('Unsupported action {0}'.format(action))
 
@@ -178,17 +176,6 @@ def _update_package(package):
         )
     except ckanapi.NotFound:
         _create_package(package)
-
-
-def _delete_package(package):
-    # TODO: Check when this gets called. Deleting a dataset just sets the
-    # state to deleted so effectively an update
-    syndicated_id = get_pkg_dict_extra(package, get_syndicated_id())
-
-    ckan = get_target()
-
-    ckan.action.package_delete(
-        id=syndicated_id)
 
 
 def set_syndicated_id(local_package, remote_package_id):

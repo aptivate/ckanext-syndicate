@@ -61,7 +61,7 @@ class SyndicatePlugin(plugins.SingletonPlugin):
     def _syndicate_dataset(self, dataset, operation):
         topic = self._get_topic('dataset', operation)
 
-        if self._syndicate(dataset):
+        if topic is not None and self._syndicate(dataset):
             syndicate_dataset(dataset.id, topic)
 
     def _syndicate(self, dataset):
@@ -72,7 +72,6 @@ class SyndicatePlugin(plugins.SingletonPlugin):
         topics = {
             DomainObjectOperation.new: 'create',
             DomainObjectOperation.changed: 'update',
-            DomainObjectOperation.deleted: 'delete',
         }
 
         topic = topics.get(operation, None)
