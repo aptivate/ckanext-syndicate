@@ -37,15 +37,6 @@ def syndicate_dataset(package_id, topic):
     )
 
 
-def syndicate_resource(package_id, resource_id, topic):
-    ckan_ini_filepath = os.path.abspath(config['__file__'])
-    celery.send_task(
-        'syndicate.sync_resource',
-        args=[package_id, resource_id, topic, ckan_ini_filepath],
-        task_id='{}-{}'.format(str(uuid.uuid4()), package_id)
-    )
-
-
 class SyndicatePlugin(plugins.SingletonPlugin):
     plugins.implements(plugins.IConfigurer)
     plugins.implements(plugins.IDomainObjectModification, inherit=True)
@@ -64,22 +55,8 @@ class SyndicatePlugin(plugins.SingletonPlugin):
             # This happens on IResourceURLChange
             return
 
-        if isinstance(entity, model.Resource):
-            self._syndicate_resource(entity, operation)
-            return
-
         if isinstance(entity, model.Package):
             self._syndicate_dataset(entity, operation)
-
-    def _syndicate_resource(self, resource, operation):
-        topic = self._get_topic('resource', operation)
-
-        dataset = model.Package.get(resource.get_package_id())
-
-        if self._syndicate(dataset):
-            syndicate_resource(dataset.id, resource.id, topic)
-
-        return
 
     def _syndicate_dataset(self, dataset, operation):
         topic = self._get_topic('dataset', operation)
