@@ -143,7 +143,9 @@ def _create_package(package):
 
     # Create a new package based on the local instance
     new_package_data = dict(package)
+
     del new_package_data['id']
+    del new_package_data['tags']
 
     new_package_data['name'] = "%s-%s" % (
         get_syndicated_name_prefix(),
@@ -154,10 +156,17 @@ def _create_package(package):
     new_package_data['owner_org'] = get_syndicated_organization()
     del new_package_data['organization']
 
-    logger.info(new_package_data)
+    context = {}
+
+    try:
+        new_package_data = toolkit.get_action('update_dataset_for_syndication')(
+            context, {'dataset_dict': new_package_data})
+    except KeyError:
+        pass
 
     try:
         remote_package = ckan.action.package_create(**new_package_data)
+
         set_syndicated_id(package, remote_package['id'])
     except toolkit.ValidationError as e:
         if 'That URL is already in use.' in e.error_dict.get('name', []):
