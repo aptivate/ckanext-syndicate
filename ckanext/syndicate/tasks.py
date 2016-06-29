@@ -154,7 +154,13 @@ def _create_package(package):
     new_package_data['owner_org'] = get_syndicated_organization()
     del new_package_data['organization']
 
-    logger.info(new_package_data)
+    context = {}
+
+    try:
+        new_package_data = toolkit.get_action('update_dataset_for_syndication')(
+            context, {'dataset_dict': new_package_data})
+    except KeyError:
+        pass
 
     try:
         remote_package = ckan.action.package_create(**new_package_data)
