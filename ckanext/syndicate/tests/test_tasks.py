@@ -119,10 +119,22 @@ class TestSyncTask(FunctionalTestBaseClass):
         local_resource_url = source['resources'][1]['url']
         assert_equal(local_resource_url, remote_resource_url)
 
+    @helpers.change_config('ckan.syndicate.organization',
+                           'remote-org')
     def test_update_package(self):
         context = {
             'user': self.user['name'],
         }
+
+        remote_org = factories.Organization(user=self.user,
+                                            name='remote-org')
+
+        helpers.call_action(
+            'member_create',
+            id=remote_org['id'],
+            object=self.user['id'],
+            object_type='user',
+            capacity='editor')
 
         # Create a dummy remote dataset
         remote_dataset = helpers.call_action(
@@ -172,6 +184,7 @@ class TestSyncTask(FunctionalTestBaseClass):
         # Expect the id of the syndicated package to match the metadata
         # syndicated_id in the source package.
         assert_equal(syndicated['id'], syndicated_id)
+        assert_equal(syndicated['owner_org'], remote_org['id'])
 
         # Test the local the local resources URL has been updated
         resources = syndicated['resources']

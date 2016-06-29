@@ -154,11 +154,10 @@ def _create_package(package):
     new_package_data['owner_org'] = get_syndicated_organization()
     del new_package_data['organization']
 
-    context = {}
-
     try:
+        # TODO: No automated test
         new_package_data = toolkit.get_action('update_dataset_for_syndication')(
-            context, {'dataset_dict': new_package_data})
+            {}, {'dataset_dict': new_package_data})
     except KeyError:
         pass
 
@@ -189,6 +188,16 @@ def _update_package(package):
 
         updated_package['extras'] = filter_extras(package['extras'])
         updated_package['resources'] = filter_resources(package['resources'])
+        updated_package['owner_org'] = get_syndicated_organization()
+
+        try:
+            # TODO: No automated test
+            updated_package = toolkit.get_action(
+                'update_dataset_for_syndication')(
+                {}, {'dataset_dict': updated_package})
+        except KeyError:
+            pass
+
         ckan.action.package_update(
             id=syndicated_id,
             **updated_package
