@@ -66,9 +66,10 @@ def register_translator():
 def get_target():
     ckan_url = config.get('ckan.syndicate.ckan_url')
     api_key = config.get('ckan.syndicate.api_key')
+    user_agent = config.get('ckan.syndicate.user_agent', None)
     assert ckan_url and api_key, "Task must have ckan_url and api_key"
 
-    ckan = ckanapi.RemoteCKAN(ckan_url, apikey=api_key)
+    ckan = ckanapi.RemoteCKAN(ckan_url, apikey=api_key, user_agent=user_agent)
     return ckan
 
 
