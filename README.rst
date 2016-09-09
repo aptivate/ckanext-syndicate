@@ -99,6 +99,10 @@ Config Settings
     # (optional, default: constructed from ckanapi version and url)
     ckan.syndicate.user_agent = My User Agent
 
+    # Try to preserve dataset's organization
+    # (optional, default: false)
+    ckan.syndicate.replicate_organization = boolean
+
 ------------------------
 Development Installation
 ------------------------

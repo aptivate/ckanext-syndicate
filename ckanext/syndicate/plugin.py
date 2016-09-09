@@ -28,6 +28,10 @@ def get_syndicated_organization():
     return config.get('ckan.syndicate.organization', None)
 
 
+def is_organization_preserved():
+    return asbool(config.get('ckan.syndicate.replicate_organization', False))
+
+
 def syndicate_dataset(package_id, topic):
     ckan_ini_filepath = os.path.abspath(config['__file__'])
     celery.send_task(

@@ -12,6 +12,7 @@ from ckanext.syndicate.plugin import (
     get_syndicated_id,
     get_syndicated_name_prefix,
     get_syndicated_organization,
+    is_organization_preserved,
 )
 
 logger = logging.getLogger(__name__)
@@ -64,12 +65,16 @@ def register_translator():
 
 
 def get_target():
+    if hasattr(get_target, 'ckan'):
+        return get_target.ckan
     ckan_url = config.get('ckan.syndicate.ckan_url')
     api_key = config.get('ckan.syndicate.api_key')
     user_agent = config.get('ckan.syndicate.user_agent', None)
     assert ckan_url and api_key, "Task must have ckan_url and api_key"
 
     ckan = ckanapi.RemoteCKAN(ckan_url, apikey=api_key, user_agent=user_agent)
+
+    get_target.ckan = ckan
     return ckan
 
 
@@ -111,6 +116,19 @@ def sync_package(package_id, action, ckan_ini_filepath=None):
         raise Exception('Unsupported action {0}'.format(action))
 
 
+def replicate_remote_organization(org):
+    ckan = get_target()
+
+    try:
+        remote_org = ckan.action.organization_show(id=org['name'])
+    except toolkit.ObjectNotFound:
+        org.pop('image_url')
+        org.pop('id')
+        remote_org = ckan.action.organization_create(**org)
+
+    return remote_org['id']
+
+
 def _create_package(package):
     ckan = get_target()
 
@@ -124,8 +142,17 @@ def _create_package(package):
 
     new_package_data['extras'] = filter_extras(new_package_data['extras'])
     new_package_data['resources'] = filter_resources(package['resources'])
-    new_package_data['owner_org'] = get_syndicated_organization()
-    del new_package_data['organization']
+
+    org = new_package_data.pop('organization')
+
+    try:
+        if not is_organization_preserved():
+            raise ValueError("Ignore organization")
+        org_id = replicate_remote_organization(org)
+    except:
+        org_id = get_syndicated_organization()
+
+    new_package_data['owner_org'] = org_id
 
     try:
         # TODO: No automated test
@@ -161,7 +188,17 @@ def _update_package(package):
 
         updated_package['extras'] = filter_extras(package['extras'])
         updated_package['resources'] = filter_resources(package['resources'])
-        updated_package['owner_org'] = get_syndicated_organization()
+
+        org = updated_package.pop('organization')
+
+        try:
+            if not is_organization_preserved():
+                raise ValueError("Ignore organization")
+            org_id = replicate_remote_organization(org)
+        except:
+            org_id = get_syndicated_organization()
+
+        updated_package['owner_org'] = org_id
 
         try:
             # TODO: No automated test

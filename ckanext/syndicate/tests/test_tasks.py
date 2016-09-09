@@ -1,7 +1,7 @@
 from mock import patch
 
 import ckanapi
-
+import ckan.plugins.toolkit as tk
 import ckan.tests.helpers as helpers
 import ckan.tests.factories as factories
 from ckan.lib.helpers import get_pkg_dict_extra
@@ -9,6 +9,7 @@ from ckan.lib.helpers import get_pkg_dict_extra
 from ckanext.syndicate.tests.helpers import (
     FunctionalTestBaseClass,
     assert_equal,
+    assert_true,
     assert_is_not_none,
     test_upload_file,
     _get_context,
@@ -193,6 +194,7 @@ class TestSyncTask(FunctionalTestBaseClass):
         local_resource_url = dataset['resources'][0]['url']
         assert_equal(local_resource_url, remote_resource_url)
 
+
     def test_syndicate_existing_package(self):
         context = {
             'user': self.user['name'],
@@ -276,3 +278,58 @@ class TestSyncTask(FunctionalTestBaseClass):
         )
 
         assert_equal(syndicated['notes'], updated['notes'])
+
+
+    @helpers.change_config('ckan.syndicate.name_prefix',
+                           'test')
+    @helpers.change_config('ckan.syndicate.replicate_organization',
+                           'yes')
+    def test_organization_replication(self):
+
+        local_org = factories.Organization(user=self.user,
+                                           name='local-org',
+                                           title="Local Org")
+        helpers.call_action(
+            'member_create',
+            id=local_org['id'],
+            object=self.user['id'],
+            object_type='user',
+            capacity='editor')
+
+        context = {
+            'user': self.user['name'],
+        }
+
+        dataset = helpers.call_action(
+            'package_create',
+            context=context,
+            name='syndicated_dataset',
+            owner_org=local_org['id'],
+            extras=[
+                {'key': 'syndicate', 'value': 'true'},
+            ]
+        )
+        assert_equal(dataset['name'], 'syndicated_dataset')
+
+        with patch('ckanext.syndicate.tasks.get_target') as mock_target:
+            # Mock API
+
+            mock_target.return_value = ckanapi.TestAppCKAN(
+                self._get_test_app(), apikey=self.user['apikey'])
+
+            # Syndicate to our Test CKAN instance
+            ckan = mock_target()
+            import mock
+            mock_org_create = mock.Mock()
+            mock_org_show = mock.Mock()
+            mock_org_show.side_effect = tk.ObjectNotFound
+            mock_org_create.return_value = local_org
+
+            ckan.action.organization_create = mock_org_create
+            ckan.action.organization_show = mock_org_show
+
+            sync_package(dataset['id'], 'dataset/create')
+
+            mock_org_show.assert_called_once_with(id=local_org['name'])
+
+            assert_true(mock_org_create.called)
