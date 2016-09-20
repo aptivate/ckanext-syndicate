@@ -12,6 +12,7 @@ from ckanext.syndicate.plugin import (
     get_syndicated_id,
     get_syndicated_name_prefix,
     get_syndicated_organization,
+    get_syndicated_author,
     is_organization_preserved,
 )
 
@@ -166,9 +167,28 @@ def _create_package(package):
         set_syndicated_id(package, remote_package['id'])
     except toolkit.ValidationError as e:
         if 'That URL is already in use.' in e.error_dict.get('name', []):
-            logger.info("package with name '{0}' already exists".format(
+            logger.info("package with name '{0}' already exists. Check creator.".format(
                 new_package_data['name']))
-        raise e
+            author = get_syndicated_author()
+            if author is None:
+                raise
+            try:
+                remote_package = ckan.action.package_show(id=new_package_data['name'])
+                remote_user = ckan.action.user_show(id=author)
+            except Exception:
+                logger.info('Unable to update')
+                raise e
+            else:
+                if remote_package['creator_user_id'] == remote_user['id']:
+                    logger.info("Author is the same. Updating")
+
+                    ckan.action.package_update(
+                        id=remote_package['id'],
+                        **new_package_data
+                    )
+                    set_syndicated_id(package, remote_package['id'])
+                else:
+                    logger.info("Author not the same. Skipping")
 
 
 def _update_package(package):

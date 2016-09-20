@@ -20,6 +20,10 @@ def get_syndicated_id():
     return config.get('ckan.syndicate.id', 'syndicated_id')
 
 
+def get_syndicated_author():
+    return config.get('ckan.syndicate.username')
+
+
 def get_syndicated_name_prefix():
     return config.get('ckan.syndicate.name_prefix', '')
 

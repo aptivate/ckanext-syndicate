@@ -103,6 +103,10 @@ Config Settings
     # (optional, default: false)
     ckan.syndicate.replicate_organization = boolean
 
+    # Try username of user, whose api_key is used
+    # (optional, default: None)
+    ckan.syndicate.replicate_organization = some_user_name
+
 ------------------------
 Development Installation
 ------------------------
