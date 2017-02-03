@@ -75,7 +75,7 @@ def get_target():
 
 def filter_extras(extras):
     extras_dict = dict([(o['key'], o['value']) for o in extras])
-    del extras_dict[get_syndicate_flag()]
+    extras_dict.pop(get_syndicate_flag(), None)
     return [{'key': k, 'value': v} for (k, v) in extras_dict.iteritems()]
 
 
