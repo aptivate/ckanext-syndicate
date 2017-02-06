@@ -1,21 +1,27 @@
-from mock import patch
+import mock
 
 import ckanapi
 import ckan.plugins.toolkit as tk
 import ckan.tests.helpers as helpers
 import ckan.tests.factories as factories
 from ckan.lib.helpers import get_pkg_dict_extra
+from ckan.model import Session
+
+from ckanext.syndicate.plugin import get_syndicated_id
 
 from ckanext.syndicate.tests.helpers import (
     FunctionalTestBaseClass,
     assert_equal,
     assert_true,
     assert_is_not_none,
+    assert_false,
     test_upload_file,
     _get_context,
 )
 
 from ckanext.syndicate.tasks import sync_package
+
+patch = mock.patch
 
 
 class TestSyncTask(FunctionalTestBaseClass):
@@ -194,7 +200,6 @@ class TestSyncTask(FunctionalTestBaseClass):
         local_resource_url = dataset['resources'][0]['url']
         assert_equal(local_resource_url, remote_resource_url)
 
-
     def test_syndicate_existing_package(self):
         context = {
             'user': self.user['name'],
@@ -279,7 +284,6 @@ class TestSyncTask(FunctionalTestBaseClass):
 
         assert_equal(syndicated['notes'], updated['notes'])
 
-
     @helpers.change_config('ckan.syndicate.name_prefix',
                            'test')
     @helpers.change_config('ckan.syndicate.replicate_organization',
@@ -319,7 +323,6 @@ class TestSyncTask(FunctionalTestBaseClass):
 
             # Syndicate to our Test CKAN instance
             ckan = mock_target()
-            import mock
             mock_org_create = mock.Mock()
             mock_org_show = mock.Mock()
             mock_org_show.side_effect = tk.ObjectNotFound
@@ -333,3 +336,69 @@ class TestSyncTask(FunctionalTestBaseClass):
             mock_org_show.assert_called_once_with(id=local_org['name'])
 
             assert_true(mock_org_create.called)
+
+    @helpers.change_config('ckan.syndicate.name_prefix',
+                           'test')
+    @helpers.change_config('ckan.syndicate.author',
+                           'test_author')
+    def test_author_check(self):
+
+        context = {
+            'user': self.user['name']
+        }
+        dataset1 = helpers.call_action(
+            'package_create',
+            context=context,
+            name='syndicated_dataset1',
+            extras=[{'key': 'syndicate', 'value': 'true'}]
+        )
+
+        dataset2 = helpers.call_action(
+            'package_create',
+            context=context,
+            name='syndicated_dataset2',
+            extras=[{'key': 'syndicate', 'value': 'true'}]
+        )
+
+        with patch('ckanext.syndicate.tasks.get_target') as mock_target:
+            # Mock API
+
+            mock_target.return_value = ckanapi.TestAppCKAN(
+                self._get_test_app(), apikey=self.user['apikey'])
+
+            # Syndicate to our Test CKAN instance
+            ckan = mock_target()
+            mock_user_show = mock.Mock()
+            mock_user_show.return_value = self.user
+            ckan.action.user_show = mock_user_show
+
+            sync_package(dataset1['id'], 'dataset/create')
+            helpers.call_action(
+                'package_patch',
+                id=dataset1['id'],
+                extras=[{'key': 'syndicate', 'value': 'true'}]
+            )
+
+            sync_package(dataset1['id'], 'dataset/update')
+            mock_user_show.assert_called_once_with(id='test_author')
+            updated1 = helpers.call_action('package_show', id=dataset1['id'])
+            assert_is_not_none(
+                get_pkg_dict_extra(updated1, get_syndicated_id())
+            )
+
+            mock_user_show = mock.Mock()
+            mock_user_show.return_value = {'name': 'random-name', 'id': ''}
+            ckan.action.user_show = mock_user_show
+
+            sync_package(dataset2['id'], 'dataset/create')
+            helpers.call_action(
+                'package_patch',
+                id=dataset2['id'],
+                extras=[{'key': 'syndicate', 'value': 'true'}]
+            )
+            sync_package(dataset2['id'], 'dataset/update')
+            updated2 = helpers.call_action('package_show', id=dataset2['id'])
+            assert_false(
+                get_pkg_dict_extra(updated2, get_syndicated_id())
+            )
+            del Session.revision

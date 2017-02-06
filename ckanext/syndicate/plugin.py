@@ -21,7 +21,7 @@ def get_syndicated_id():
 
 
 def get_syndicated_author():
-    return config.get('ckan.syndicate.username')
+    return config.get('ckan.syndicate.author')
 
 
 def get_syndicated_name_prefix():

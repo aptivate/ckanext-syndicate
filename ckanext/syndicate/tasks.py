@@ -146,11 +146,9 @@ def _create_package(package):
 
     org = new_package_data.pop('organization')
 
-    try:
-        if not is_organization_preserved():
-            raise ValueError("Ignore organization")
+    if is_organization_preserved():
         org_id = replicate_remote_organization(org)
-    except:
+    else:
         org_id = get_syndicated_organization()
 
     new_package_data['owner_org'] = org_id
@@ -173,14 +171,19 @@ def _create_package(package):
             if author is None:
                 raise
             try:
-                remote_package = ckan.action.package_show(id=new_package_data['name'])
+                remote_package = ckan.action.package_show(
+                    id=new_package_data['name'])
                 remote_user = ckan.action.user_show(id=author)
-            except Exception:
-                logger.info('Unable to update')
-                raise e
+            except toolkit.ValidationError as e:
+                log.error(e.errors)
+                raise
+            except toolkit.ObjectNotFound as e:
+                log.error('User "{0}" not found'.format(author))
+                raise
             else:
                 if remote_package['creator_user_id'] == remote_user['id']:
-                    logger.info("Author is the same. Updating")
+                    logger.info("Author is the same({0}). Updating".format(
+                        author))
 
                     ckan.action.package_update(
                         id=remote_package['id'],
@@ -188,7 +191,9 @@ def _create_package(package):
                     )
                     set_syndicated_id(package, remote_package['id'])
                 else:
-                    logger.info("Author not the same. Skipping")
+                    logger.info(
+                        "Creator of remote package '{0}' did not match '{1}'. Skipping".format(
+                            remote_user['name'], author))
 
 
 def _update_package(package):
