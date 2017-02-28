@@ -19,7 +19,7 @@ value. This is useful if the schemas are different between CKAN instances.
 Requirements
 ------------
 
-* Tested with CKAN 2.5.2
+* Tested with CKAN 2.5.x branch
 * Requires ``celery``
 * To work over SSL, requires ``pyOpenSSL``, ``ndg-httpsclient`` and ``pyasn1``
 * It may be useful to run Celery in a production environment through `supervisor <http://supervisord.org/>`_
