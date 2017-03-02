@@ -216,11 +216,9 @@ def _update_package(package):
 
         org = updated_package.pop('organization')
 
-        try:
-            if not is_organization_preserved():
-                raise ValueError("Ignore organization")
+        if is_organization_preserved():
             org_id = replicate_remote_organization(org)
-        except:
+        else:
             org_id = get_syndicated_organization()
 
         updated_package['owner_org'] = org_id

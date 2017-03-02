@@ -103,7 +103,9 @@ Config Settings
     # (optional, default: false)
     ckan.syndicate.replicate_organization = boolean
 
-    # Try the username of user, whose api_key is used
+    # The username whose api_key is used.
+    # If the dataset already exists on the target CKAN instance, the dataset will be updated
+    # only if this option is set and its creator matches this user name
     # (optional, default: None)
     ckan.syndicate.author = some_user_name
 
