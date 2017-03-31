@@ -19,7 +19,7 @@ value. This is useful if the schemas are different between CKAN instances.
 Requirements
 ------------
 
-* Tested with CKAN 2.5.2
+* Tested with CKAN 2.5.x branch
 * Requires ``celery``
 * To work over SSL, requires ``pyOpenSSL``, ``ndg-httpsclient`` and ``pyasn1``
 * It may be useful to run Celery in a production environment through `supervisor <http://supervisord.org/>`_
@@ -98,6 +98,16 @@ Config Settings
     # The user agent
     # (optional, default: constructed from ckanapi version and url)
     ckan.syndicate.user_agent = My User Agent
+
+    # Try to preserve dataset's organization
+    # (optional, default: false)
+    ckan.syndicate.replicate_organization = boolean
+
+    # The username whose api_key is used.
+    # If the dataset already exists on the target CKAN instance, the dataset will be updated
+    # only if this option is set and its creator matches this user name
+    # (optional, default: None)
+    ckan.syndicate.author = some_user_name
 
 ------------------------
 Development Installation

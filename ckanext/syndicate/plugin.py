@@ -20,12 +20,20 @@ def get_syndicated_id():
     return config.get('ckan.syndicate.id', 'syndicated_id')
 
 
+def get_syndicated_author():
+    return config.get('ckan.syndicate.author')
+
+
 def get_syndicated_name_prefix():
     return config.get('ckan.syndicate.name_prefix', '')
 
 
 def get_syndicated_organization():
     return config.get('ckan.syndicate.organization', None)
+
+
+def is_organization_preserved():
+    return asbool(config.get('ckan.syndicate.replicate_organization', False))
 
 
 def syndicate_dataset(package_id, topic):
