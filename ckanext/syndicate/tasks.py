@@ -17,6 +17,11 @@ from ckanext.syndicate.plugin import (
     get_syndicated_author,
     is_organization_preserved,
 )
+from ckan import model
+from ckan.model.task_status import TaskStatus
+from datetime import datetime
+import json
+from sqlalchemy.orm.exc import NoResultFound
 
 logger = logging.getLogger(__name__)
 
@@ -104,7 +109,6 @@ def sync_package(package_id, action, ckan_ini_filepath=None):
 
     # load the package at run of time task (rather than use package state at
     # time of task creation).
-    from ckan import model
     context = {'model': model, 'ignore_auth': True, 'session': model.Session,
                'use_cache': False, 'validate': False}
 
@@ -143,6 +147,7 @@ def _create_package(package):
 
     # Create a new package based on the local instance
     new_package_data = dict(package)
+    logging_id = new_package_data['id']
     del new_package_data['id']
 
     new_package_data['name'] = "%s-%s" % (
@@ -171,7 +176,9 @@ def _create_package(package):
     try:
         remote_package = ckan.action.package_create(**new_package_data)
         set_syndicated_id(package, remote_package['id'])
+        _remove_from_log(logging_id)
     except toolkit.ValidationError as e:
+        _log_errors(logging_id, e.error_dict, 'dataset/create')
         if 'That URL is already in use.' in e.error_dict.get('name', []):
             logger.info("package with name '{0}' already exists. Check creator.".format(
                 new_package_data['name']))
@@ -184,9 +191,11 @@ def _create_package(package):
                 remote_user = ckan.action.user_show(id=author)
             except toolkit.ValidationError as e:
                 log.error(e.errors)
+                _log_errors(logging_id, e.error_dict, 'dataset/create')
                 raise
             except toolkit.ObjectNotFound as e:
                 log.error('User "{0}" not found'.format(author))
+                _log_errors(logging_id, e.error_dict, 'dataset/create')
                 raise
             else:
                 if remote_package['creator_user_id'] == remote_user['id']:
@@ -198,6 +207,7 @@ def _create_package(package):
                         **new_package_data
                     )
                     set_syndicated_id(package, remote_package['id'])
+                    _remove_from_log(logging_id)
                 else:
                     logger.info(
                         "Creator of remote package '{0}' did not match '{1}'. Skipping".format(
@@ -215,6 +225,7 @@ def _update_package(package):
 
     try:
         updated_package = dict(package)
+        logging_id = updated_package['id']
         # Keep the existing remote ID and Name
         del updated_package['id']
         del updated_package['name']
@@ -239,10 +250,14 @@ def _update_package(package):
         except KeyError:
             pass
 
-        ckan.action.package_update(
-            id=syndicated_id,
-            **updated_package
-        )
+        try:
+            ckan.action.package_update(
+                id=syndicated_id,
+                **updated_package
+            )
+            _remove_from_log(logging_id)
+        except toolkit.ValidationError as e:
+            _log_errors(logging_id, e.error_dict, 'dataset/update')
     except ckanapi.NotFound:
         _create_package(package)
 
@@ -258,7 +273,6 @@ def set_syndicated_id(local_package, remote_package_id):
 
 
 def _update_package_extras(package):
-    from ckan import model
     from ckan.lib.dictization.model_save import package_extras_save
 
     package_id = package['id']
@@ -288,3 +302,55 @@ def _update_search_index(package_id, log):
     package = toolkit.get_action('package_show')(context_, {'id': package_id})
     package_index.index_package(package, defer_commit=False)
     log.info('Search indexed %s', package['name'])
+
+
+def _log_errors(pkg_id, e, action):
+    """
+    Tell CKAN to log any error during the syndication.
+
+    Logs are saved into the task_status table.
+    """
+    log.warn(e)
+
+    task_dict = {
+        'entity_type': 'dataset',
+        'task_type': 'syndicate',
+        'value': False,
+        'state': action,
+        'error': json.dumps(e, indent=2)
+    }
+
+    try:
+        query = model.Session.query(TaskStatus).filter(
+            TaskStatus.entity_id == pkg_id).one()
+
+        query.error = task_dict['error']
+        query.state = task_dict['state']
+        query.last_updated = datetime.now()
+    except NoResultFound:
+        task_dict['entity_id'] = pkg_id
+        task_dict['key'] = pkg_id
+
+        task_status = TaskStatus(
+            entity_id=task_dict['entity_id'],
+            entity_type=task_dict['entity_type'],
+            task_type=task_dict['task_type'],
+            key=task_dict['key'],
+            value=task_dict['value'],
+            error=task_dict['error'],
+            state=task_dict['state']
+        )
+
+        model.Session.add(task_status)
+    model.Session.commit()
+    model.Session.close()
+
+
+def _remove_from_log(pkg_id):
+    """Tell CKAN to remove the log from task_status table."""
+    try:
+        model.Session.query(model.TaskStatus).filter(
+            model.TaskStatus.entity_id == pkg_id).delete()
+        model.Session.commit()
+    except NoResultFound:
+        pass

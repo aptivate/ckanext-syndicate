@@ -4,6 +4,7 @@ import ckan.plugins as plugins
 import ckan.plugins.toolkit as toolkit
 from ckan.lib.celery_app import celery
 from ckan.lib.helpers import asbool
+from routes.mapper import SubMapper
 
 from pylons import config
 import ckan.model as model
@@ -48,6 +49,7 @@ def syndicate_dataset(package_id, topic):
 class SyndicatePlugin(plugins.SingletonPlugin):
     plugins.implements(plugins.IConfigurer)
     plugins.implements(plugins.IDomainObjectModification, inherit=True)
+    plugins.implements(plugins.IRoutes, inherit=True)
 
     # IConfigurer
 
@@ -88,3 +90,33 @@ class SyndicatePlugin(plugins.SingletonPlugin):
             return '{0}/{1}'.format(prefix, topic)
 
         return None
+
+    # IRouter
+
+    def before_map(self, map):
+
+        # Syndicate UI
+        with SubMapper(
+            map,
+            controller="ckanext.syndicate.controller.syndicate:SyndicateController",
+            path_prefix='/organization'
+        ) as m:
+            m.connect('syndicate_logs', '/syndicate-logs/{id}', action='admin_user_interface')
+
+        # Ajax syndicate log remove
+        with SubMapper(
+            map,
+            controller="ckanext.syndicate.controller.syndicate:SyndicateController",
+            path_prefix='/organization/syndicate-logs'
+        ) as m:
+            m.connect('syndicate_log_remove', '/syndicate-log-remove/{id}', action='syndicate_log_remove')
+
+        # Ajax syndicate log retry
+        with SubMapper(
+            map,
+            controller="ckanext.syndicate.controller.syndicate:SyndicateController",
+            path_prefix='/organization/syndicate-logs'
+        ) as m:
+            m.connect('syndicate_log_remove', '/syndicate-log-retry/{id}', action='syndicate_log_retry')
+
+        return map
