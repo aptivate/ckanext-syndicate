@@ -1,9 +1,11 @@
+from pprint import pprint
 import logging
 from urlparse import urlparse
 import ckanapi
 import os
 import routes
 
+import pylons
 from pylons import config
 
 import ckan.plugins.toolkit as toolkit
@@ -60,7 +62,7 @@ def register_translator():
     # If not set (in cli access), patch the a translator with a mock, so the
     # _() functions in logic layer don't cause failure.
     from paste.registry import Registry
-    from pylons import translator
+    from pylons import translator, tmpl_context
     from ckan.lib.cli import MockTranslator
     if 'registery' not in globals():
         global registry
@@ -71,6 +73,8 @@ def register_translator():
         global translator_obj
         translator_obj = MockTranslator()
         registry.register(translator, translator_obj)
+    c = pylons.util.AttribSafeContextObj()
+    registry.register(pylons.c, c)
 
 
 def get_target():
