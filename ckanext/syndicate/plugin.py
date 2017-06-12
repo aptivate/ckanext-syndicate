@@ -98,7 +98,7 @@ class SyndicatePlugin(plugins.SingletonPlugin):
         # Syndicate UI
         with SubMapper(
             map,
-            controller="ckanext.syndicate.controller.syndicate:SyndicateController",
+            controller="ckanext.syndicate.controllers.syndicate:SyndicateController",
             path_prefix='/organization'
         ) as m:
             m.connect('syndicate_logs', '/syndicate-logs/{id}', action='admin_user_interface')
@@ -106,7 +106,7 @@ class SyndicatePlugin(plugins.SingletonPlugin):
         # Ajax syndicate log remove
         with SubMapper(
             map,
-            controller="ckanext.syndicate.controller.syndicate:SyndicateController",
+            controller="ckanext.syndicate.controllers.syndicate:SyndicateController",
             path_prefix='/organization/syndicate-logs'
         ) as m:
             m.connect('syndicate_log_remove', '/syndicate-log-remove/{id}', action='syndicate_log_remove')
@@ -114,7 +114,7 @@ class SyndicatePlugin(plugins.SingletonPlugin):
         # Ajax syndicate log retry
         with SubMapper(
             map,
-            controller="ckanext.syndicate.controller.syndicate:SyndicateController",
+            controller="ckanext.syndicate.controllers.syndicate:SyndicateController",
             path_prefix='/organization/syndicate-logs'
         ) as m:
             m.connect('syndicate_log_remove', '/syndicate-log-retry/{id}', action='syndicate_log_retry')

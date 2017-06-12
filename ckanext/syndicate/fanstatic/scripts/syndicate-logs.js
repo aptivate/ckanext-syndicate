@@ -21,13 +21,13 @@ ckan.module('syndicate-log-retry', function($, _) {
           $.ajax({
             'url': '/organization/syndicate-logs/syndicate-log-retry/' + pkgId,
             'success': function(data) {
-              console.dir(data)
+              var notifications = $('.syndicate-notifications');
+              var alert = create_alert('error', data.msg);
               if (data.success) {
                 $(e.target).closest('tr').remove();
-                var notifications = $('.syndicate-notifications');
                 var syndicateTableBody = $('#syndicate-logs-table tbody');
                 var countTr = syndicateTableBody.children().length;
-                var alert = create_alert('success', data.msg);
+                alert = create_alert('success', data.msg);
 
                 if (!countTr) {
                   var trNothing = $('<tr></tr>', {
@@ -35,8 +35,8 @@ ckan.module('syndicate-log-retry', function($, _) {
                   });
                   $('#syndicate-logs-table tbody').append(trNothing);
                 }
-                notifications.append(alert);
               }
+              notifications.append(alert);
             }
           });
         }

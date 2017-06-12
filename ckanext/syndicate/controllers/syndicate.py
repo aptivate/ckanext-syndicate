@@ -12,6 +12,42 @@ import json
 abort = base.abort
 
 
+def _get_tasks(group_id):
+    tasks = []
+
+    try:
+        tasks = model.Session.query(model.TaskStatus).join(
+            model.Package, model.TaskStatus.entity_id == model.Package.id
+        ).join(
+            model.Group, model.Package.owner_org == model.Group.id
+        ).filter(model.Group.id == group_id).all()
+    except NoResultFound:
+        pass
+
+    return tasks
+
+
+def _get_task_and_delete(pkg_id):
+    task = model.Session.query(model.TaskStatus).filter(
+        model.TaskStatus.entity_id == pkg_id).one()
+    pkg_dict = {
+        'id': task.entity_id,
+        'state': task.state
+    }
+    task.delete()
+    model.Session.commit()
+
+    return pkg_dict
+
+
+def _delete_log_item(pkg_id):
+    delete_item = model.Session.query(model.TaskStatus).filter(
+        model.TaskStatus.entity_id == pkg_id).delete()
+    model.Session.commit()
+
+    return delete_item
+
+
 class SyndicateController(base.BaseController):
     """Controller that provides syndicate admin UI."""
 
@@ -23,20 +59,13 @@ class SyndicateController(base.BaseController):
         try:
             data_dict = {'id': id, 'include_datasets': False}
             h.check_access('organization_update', data_dict)
-            c.group_dict = tk.get_action('organization_show')(context, data_dict)
+            c.group_dict = tk.get_action('organization_show')(
+                context,
+                data_dict)
         except (NotFound, NotAuthorized):
             abort(404, _('Group not found'))
 
-        tasks = []
-
-        try:
-            tasks = model.Session.query(model.TaskStatus).join(
-                model.Package, model.TaskStatus.entity_id == model.Package.id
-            ).join(
-                model.Group, model.Package.owner_org == model.Group.id
-            ).filter(model.Group.id == c.group_dict['id']).all()
-        except NoResultFound:
-            pass
+        tasks = _get_tasks(c.group_dict['id'])
 
         return base.render(
             'organization/syndicate_interface.html',
@@ -50,13 +79,11 @@ class SyndicateController(base.BaseController):
 
         try:
             h.check_access('package_update', {'id': id})
-            model.Session.query(model.TaskStatus).filter(
-                model.TaskStatus.entity_id == id).delete()
-            model.Session.commit()
-        except (NotFound, NotAuthorized):
-            return json.dumps({"success": True})
+            _delete_log_item(id)
+        except (NoResultFound, NotFound, NotAuthorized):
+            return json.dumps({'success': False, 'msg': 'Nothing to remove'})
 
-        return json.dumps({"success": True})
+        return json.dumps({'success': True})
 
     def syndicate_log_retry(self, id):
         """Ajax call trigger this method to re-syndicate log item."""
@@ -64,21 +91,15 @@ class SyndicateController(base.BaseController):
 
         try:
             h.check_access('package_update', {"id": id})
-            task = model.Session.query(model.TaskStatus).filter(
-                model.TaskStatus.entity_id == id).one()
-            pkg_dict = {
-                'id': task.entity_id,
-                'state': task.state
-            }
-            task.delete()
-            model.Session.commit()
+            pkg_dict = _get_task_and_delete(id)
+
             syndicate_dataset(pkg_dict['id'], pkg_dict['state'])
 
             return json.dumps({
                 'success': True,
                 'msg': 'Celery task was sent to re-syndicate dataset.'
             })
-        except (NotFound, NotAuthorized):
+        except (NoResultFound, NotFound, NotAuthorized):
             return json.dumps({
                 'success': False,
                 'msg': ('''Error occurred, dataset not
