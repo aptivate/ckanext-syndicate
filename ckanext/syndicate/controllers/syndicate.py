@@ -13,31 +13,30 @@ abort = base.abort
 
 
 def _get_tasks(group_id):
-    tasks = []
 
-    try:
-        tasks = model.Session.query(model.TaskStatus).join(
-            model.Package, model.TaskStatus.entity_id == model.Package.id
-        ).join(
-            model.Group, model.Package.owner_org == model.Group.id
-        ).filter(model.Group.id == group_id).all()
-    except NoResultFound:
-        pass
+    tasks = model.Session.query(model.TaskStatus).join(
+        model.Package, model.TaskStatus.entity_id == model.Package.id
+    ).join(
+        model.Group, model.Package.owner_org == model.Group.id
+    ).filter(model.Group.name == group_id).all()
 
     return tasks
 
 
 def _get_task_and_delete(pkg_id):
-    task = model.Session.query(model.TaskStatus).filter(
-        model.TaskStatus.entity_id == pkg_id).one()
-    pkg_dict = {
-        'id': task.entity_id,
-        'state': task.state
-    }
-    task.delete()
-    model.Session.commit()
+    try:
+        task = model.Session.query(model.TaskStatus).filter(
+            model.TaskStatus.entity_id == pkg_id).one()
+        pkg_dict = {
+            'id': task.entity_id,
+            'state': task.state
+        }
+        task.delete()
+        model.Session.commit()
 
-    return pkg_dict
+        return pkg_dict
+    except NoResultFound:
+        raise NoResultFound
 
 
 def _delete_log_item(pkg_id):
@@ -51,7 +50,7 @@ def _delete_log_item(pkg_id):
 class SyndicateController(base.BaseController):
     """Controller that provides syndicate admin UI."""
 
-    def admin_user_interface(self, id):
+    def tasks_list(self, id):
         """Method renders syndicate log page."""
         context = {'model': model, 'session': model.Session,
                    'user': c.user}
@@ -62,13 +61,15 @@ class SyndicateController(base.BaseController):
             c.group_dict = tk.get_action('organization_show')(
                 context,
                 data_dict)
-        except (NotFound, NotAuthorized):
+        except NotFound:
             abort(404, _('Group not found'))
+        except NotAuthorized:
+            abort(403, _('Not authorized'))
 
-        tasks = _get_tasks(c.group_dict['id'])
+        tasks = _get_tasks(id)
 
         return base.render(
-            'organization/syndicate_interface.html',
+            'organization/tasks_list.html',
             extra_vars={
                 "group_type": "organization", 'tasks': tasks
             })
@@ -76,14 +77,30 @@ class SyndicateController(base.BaseController):
     def syndicate_log_remove(self, id):
         """Ajax call trigger this method to remove log item."""
         response.headers['Content-type'] = "application/json"
-
+        responce_data = {}
         try:
             h.check_access('package_update', {'id': id})
-            _delete_log_item(id)
-        except (NoResultFound, NotFound, NotAuthorized):
-            return json.dumps({'success': False, 'msg': 'Nothing to remove'})
+            is_deleted = _delete_log_item(id)
+        except NotFound:
+            responce_data = json.dumps({
+                'success': False,
+                'msg': _('Dataset not found')
+            })
+        except NotAuthorized:
+            responce_data = json.dumps({
+                'success': False,
+                'msg': _('You are not authorized to update this dataset')
+            })
+        else:
+            if is_deleted:
+                responce_data = json.dumps({'success': True})
+            else:
+                responce_data = json.dumps({
+                    'success': False,
+                    'msg': _('Nothing to remove')
+                })
 
-        return json.dumps({'success': True})
+        return responce_data
 
     def syndicate_log_retry(self, id):
         """Ajax call trigger this method to re-syndicate log item."""
@@ -99,7 +116,7 @@ class SyndicateController(base.BaseController):
                 'success': True,
                 'msg': 'Celery task was sent to re-syndicate dataset.'
             })
-        except (NoResultFound, NotFound, NotAuthorized):
+        except (NotFound, NotAuthorized):
             return json.dumps({
                 'success': False,
                 'msg': ('''Error occurred, dataset not

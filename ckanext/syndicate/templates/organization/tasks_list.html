@@ -4,7 +4,7 @@
 
 {% block primary_content_inner %}
   <h1>{{ _('Syndication logs') }}</h1>
-  <div class="syndicate-notifications"></div>
+
   <table id="syndicate-logs-table" class="table table-header table-hover table-bordered">
     <thead>
       <tr>
@@ -26,10 +26,10 @@
           <td>{{ task.last_updated }}</td>
           <td>
             <div class="btn-group pull-right">
-              <a class="btn btn-small syndicate-log-item-retry" href="#" data-module="syndicate-log-retry" data-module-pkgid="{{ task.entity_id }}" title="{{ _('Retry') }}">
+              <a class="btn btn-small syndicate-log-item-retry" href="#" data-module="syndicate-log-retry" data-module-pkgid="{{ task.entity_id }}" data-module-site_url="{{ g.site_url }}" title="{{ _('Retry') }}">
                 {% block retry_button_text %}<i class="icon-refresh"></i>{% endblock %}
               </a>
-              <a class="btn btn-danger btn-small syndicate-log-item-remove" href="#" data-module="syndicate-log-remove"  data-module-pkgid="{{ task.entity_id }}" title="{{ _('Delete') }}">
+              <a class="btn btn-danger btn-small syndicate-log-item-remove" href="#" data-module="syndicate-log-remove"  data-module-pkgid="{{ task.entity_id }}" data-module-site_url="{{ g.site_url }}" title="{{ _('Delete') }}">
                 {% block delete_button_text %}<i class="icon-remove"></i>{% endblock %}
               </a>
             </div>

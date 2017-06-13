@@ -1,13 +1,6 @@
 ckan.module('syndicate-log-retry', function($, _) {
     "use strict";
 
-    function create_alert(status, text) {
-      return $('<div></div>', {
-        class: 'alert alert-' + status + ' alert-dismissable',
-        html: '<a href="#" class="close" data-dismiss="alert" aria-label="close">&times;</a>' + text
-      });
-    }
-
     return {
         initialize: function() {
           $.proxyAll(this, /_on/);
@@ -17,26 +10,28 @@ ckan.module('syndicate-log-retry', function($, _) {
           e.preventDefault();
 
           var pkgId = this.options.pkgid;
+          var self = this;
 
           $.ajax({
-            'url': '/organization/syndicate-logs/syndicate-log-retry/' + pkgId,
+            'url': this.options.site_url + '/organization/syndicate-logs/syndicate-log-retry/' + pkgId,
             'success': function(data) {
-              var notifications = $('.syndicate-notifications');
-              var alert = create_alert('error', data.msg);
+
               if (data.success) {
                 $(e.target).closest('tr').remove();
                 var syndicateTableBody = $('#syndicate-logs-table tbody');
                 var countTr = syndicateTableBody.children().length;
-                alert = create_alert('success', data.msg);
+
+                self.sandbox.notify('Success', data.msg, 'success');
 
                 if (!countTr) {
                   var trNothing = $('<tr></tr>', {
-                    'html': '<td class="no-syndicate-logs" colspan="4"><i>There are no syndication errors.</i></td>'
+                    'html': '<td class="no-syndicate-logs" colspan="5"><i>There are no syndication errors.</i></td>'
                   });
                   $('#syndicate-logs-table tbody').append(trNothing);
                 }
+              } else {
+                self.sandbox.notify('Success', data.msg, 'error');
               }
-              notifications.append(alert);
             }
           });
         }
@@ -56,9 +51,9 @@ ckan.module('syndicate-log-remove', function($, _) {
           var pkgId = this.options.pkgid;
 
           $.ajax({
-            'url': '/organization/syndicate-logs/syndicate-log-remove/' + pkgId,
+            'url': this.options.site_url + '/organization/syndicate-logs/syndicate-log-remove/' + pkgId,
             'success': function(data) {
-              console.dir(data)
+
               if (data.success) {
                 $(e.target).closest('tr').remove();
                 var syndicateTableBody = $('#syndicate-logs-table tbody');
@@ -66,7 +61,7 @@ ckan.module('syndicate-log-remove', function($, _) {
 
                 if (!countTr) {
                   var trNothing = $('<tr></tr>', {
-                    'html': '<td class="no-syndicate-logs" colspan="4"><i>There are no syndication errors.</i></td>'
+                    'html': '<td class="no-syndicate-logs" colspan="5"><i>There are no syndication errors.</i></td>'
                   });
                   $('#syndicate-logs-table tbody').append(trNothing);
                 }

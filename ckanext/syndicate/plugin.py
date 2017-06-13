@@ -101,7 +101,7 @@ class SyndicatePlugin(plugins.SingletonPlugin):
             controller="ckanext.syndicate.controllers.syndicate:SyndicateController",
             path_prefix='/organization'
         ) as m:
-            m.connect('syndicate_logs', '/syndicate-logs/{id}', action='admin_user_interface')
+            m.connect('syndicate_logs', '/syndicate-logs/{id}', action='tasks_list')
 
         # Ajax syndicate log remove
         with SubMapper(

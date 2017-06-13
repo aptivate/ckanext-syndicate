@@ -331,15 +331,7 @@ def _log_errors(pkg_id, e, action):
         task_dict['entity_id'] = pkg_id
         task_dict['key'] = pkg_id
 
-        task_status = TaskStatus(
-            entity_id=task_dict['entity_id'],
-            entity_type=task_dict['entity_type'],
-            task_type=task_dict['task_type'],
-            key=task_dict['key'],
-            value=task_dict['value'],
-            error=task_dict['error'],
-            state=task_dict['state']
-        )
+        task_status = TaskStatus(**task_dict)
 
         model.Session.add(task_status)
     model.Session.commit()
@@ -348,9 +340,6 @@ def _log_errors(pkg_id, e, action):
 
 def _remove_from_log(pkg_id):
     """Tell CKAN to remove the log from task_status table."""
-    try:
-        model.Session.query(model.TaskStatus).filter(
-            model.TaskStatus.entity_id == pkg_id).delete()
-        model.Session.commit()
-    except NoResultFound:
-        pass
+    model.Session.query(model.TaskStatus).filter(
+        model.TaskStatus.entity_id == pkg_id).delete()
+    model.Session.commit()
