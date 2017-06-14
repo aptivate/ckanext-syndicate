@@ -272,7 +272,9 @@ def _update_package_extras(package):
 
     extra_dicts = package.get("extras")
     context_ = {'model': model, 'session': model.Session}
-    model.repo.new_revision()
+    rev = model.repo.new_revision()
+    rev.author = toolkit.get_action('get_site_user')(
+        {'model': model, 'ignore_auth': True}, {})['name']
     package_extras_save(extra_dicts, package_obj, context_)
     model.Session.commit()
     model.Session.flush()
