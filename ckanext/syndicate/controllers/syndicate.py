@@ -18,15 +18,15 @@ abort = base.abort
 
 
 def _get_tasks(group_id=None):
-
     tasks = model.Session.query(model.TaskStatus)
+
     if group_id is not None:
         tasks.join(
             model.Package, model.TaskStatus.entity_id == model.Package.id
         ).join(
             model.Group, model.Package.owner_org == model.Group.id
         ).filter(model.Group.name == group_id)
-    tasks.all()
+    tasks = tasks.all()
 
     return tasks
 
@@ -55,7 +55,7 @@ def _delete_log_item(pkg_id, url):
     return delete_item
 
 def _delete_profile_items(remove_list):
-    # import pdb; pdb.set_trace();
+
     for profile_id in remove_list:
         delete_items = model.Session.query(SyndicateConfig).filter(
             SyndicateConfig.id == profile_id).delete()
@@ -73,7 +73,7 @@ def _prepare_form_dict(data_dict):
     syndicate_authors = data_dict.getall('syndicate_author')
     syndicate_prefixs = data_dict.getall('syndicate_prefix')
     syndicate_flags = data_dict.getall('syndicate_flag')
-    # import pdb; pdb.set_trace();
+
     # check for how many profiles were submitted
     profiles_num = len(syndicate_ids)
 
@@ -131,7 +131,7 @@ class SyndicateController(base.BaseController):
 
                 for profile in profiles:
                     record = SyndicateConfig(**profile)
-                    # import pdb; pdb.set_trace();
+
                     if 'id' in profile:
                         update_record = model.Session.query(SyndicateConfig).filter(
                             SyndicateConfig.id == profile['id'])
@@ -139,7 +139,7 @@ class SyndicateController(base.BaseController):
                         update_record.update(profile)
                     else:
                         records_list.append(record)
-                # import pdb; pdb.set_trace();
+
                 if records_list:
                     model.Session.add_all(records_list)
                 model.Session.commit()

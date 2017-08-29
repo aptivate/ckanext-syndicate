@@ -47,7 +47,7 @@ class TestSyndicateController(FunctionalTestBaseClass):
             entity_id=dataset['id'],
             entity_type='dataset',
             task_type='syndicate',
-            key=dataset['id'],
+            key='http://localhost:5050/',
             value=False,
             error='',
             state='dataset/create'
@@ -61,7 +61,7 @@ class TestSyndicateController(FunctionalTestBaseClass):
         assert_equal(len(tasks), 1)
 
         # Expect task was found and remove, removed id equals dataset id
-        data_dict = _get_task_and_delete(dataset['id'])
+        data_dict = _get_task_and_delete(dataset['id'], 'http://localhost:5050/')
         assert_equal(data_dict['id'], dataset['id'])
 
     def test_delete_log_item(self):
@@ -84,7 +84,7 @@ class TestSyndicateController(FunctionalTestBaseClass):
             entity_id=dataset['id'],
             entity_type='dataset',
             task_type='syndicate',
-            key=dataset['id'],
+            key='http://localhost:5050/',
             value=False,
             error='',
             state='dataset/create'
@@ -94,5 +94,5 @@ class TestSyndicateController(FunctionalTestBaseClass):
         Session.commit()
 
         # Expect 1 log entry to be removed
-        task = _delete_log_item(dataset['id'])
+        task = _delete_log_item(dataset['id'], 'http://localhost:5050/')
         assert_equal(task, 1)

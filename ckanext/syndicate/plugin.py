@@ -156,8 +156,6 @@ class SyndicatePlugin(plugins.SingletonPlugin):
         ) as m:
             m.connect('syndicate_sysadmin_ui', '/syndicate-config', action='syndicate_config')
             m.connect('syndicate_global_logs', '/syndicate-global-logs', action='syndicate_global_logs')
-            # Sundicate Sysadmin configs remove config item
-            # m.connect('syndicate_config_remove', '/syndicate-config/remove', action='syndicate_config_remove')
         
         # Syndicate organizations page
         with SubMapper(

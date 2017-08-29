@@ -42,15 +42,19 @@ To install ckanext-syndicate:
    config file (by default the config file is located at
    ``/etc/ckan/default/production.ini``).
 
-4. Restart CKAN. For example if you've deployed CKAN with Apache on Ubuntu::
+4. Run paster command to init ``syndicate_config`` table
+
+    paster --plugin=ckan syndicate init -c /etc/ckan/default/development.ini
+
+5. Restart CKAN. For example if you've deployed CKAN with Apache on Ubuntu::
 
     sudo service apache2 reload
 
-5. You will also need to set up celery. In a development environment this can be done with the following paster command from within your virtual environment::
+6. You will also need to set up celery. In a development environment this can be done with the following paster command from within your virtual environment::
 
     paster --plugin=ckan celeryd run -c /etc/ckan/default/development.ini
 
-6. In a production environment, celery can be configured through supervisor, for example ``/etc/supervisor/conf.d/celery.conf``::
+7. In a production environment, celery can be configured through supervisor, for example ``/etc/supervisor/conf.d/celery.conf``::
 
     [program:celery]
     autorestart=true
@@ -65,9 +69,9 @@ To install ckanext-syndicate:
     stopwaitsecs=600
     user=www-data
 
----------------
-Config Settings
----------------
+--------------------------------------
+Config Settings for using in .ini file
+--------------------------------------
 
 ::
 
@@ -108,6 +112,18 @@ Config Settings
     # only if this option is set and its creator matches this user name
     # (optional, default: None)
     ckan.syndicate.author = some_user_name
+
+--------------------------
+Config Settings in CKAN UI 
+--------------------------
+
+link to admin page ``/syndicate-config`` sysadmins are only allowed.
+(.ini file config will be used if no configs are set or missing in the UI)
+
+New feature::
+    - Using Syndicate CKAN UI, you can add multiple ckan instances;
+    - UI provides syndicate logs page, that show all failed syndications. You can manually run syndication for each of these logs.
+
 
 ------------------------
 Development Installation
