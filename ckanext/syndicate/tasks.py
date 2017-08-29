@@ -127,29 +127,10 @@ def sync_package(package_id, action, ckan_ini_filepath=None, profile=None):
         params,
     )
 
-    # syndicate_profiles = _get_syndicate_profiles()
-
     if action == 'dataset/create':
-        # if len(syndicate_profiles) > 0:
-        #     for profile in syndicate_profiles:
-                # try:
         _create_package(package, profile)
-                # except Exception as e:
-                #     logger.error(e)
-                #     continue
-        # else:
-        #     _create_package(package)
-
     elif action == 'dataset/update':
-        # if len(syndicate_profiles) > 0:
-        #     for profile in syndicate_profiles:
-        #         try:
         _update_package(package, profile)
-                # except Exception as e:
-                #     logger.error(e)
-                #     continue
-        # else:
-        #     _update_package(package)
     else:
         raise Exception('Unsupported action {0}'.format(action))
 
@@ -168,7 +149,6 @@ def replicate_remote_organization(org):
 
 
 def _create_package(package, profile=None):
-    # syndicate_profiles = _get_syndicate_profiles()
     ckan = get_target(
         profile['syndicate_url'] if profile and profile.get('syndicate_url', '') else '',
         profile['syndicate_api_key'] if profile and profile.get('syndicate_api_key', '') else ''
@@ -193,8 +173,7 @@ def _create_package(package, profile=None):
     new_package_data['resources'] = filter_resources(package['resources'])
 
     org = new_package_data.pop('organization')
-    # from celery.contrib import rdb
-    # rdb.set_trace()
+
     if is_organization_preserved() or\
     (profile and profile.get('syndicate_replicate_organization', False)):
         org_id = replicate_remote_organization(org)
