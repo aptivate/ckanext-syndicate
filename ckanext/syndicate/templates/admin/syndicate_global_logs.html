@@ -1,6 +1,9 @@
-{% extends "organization/edit_base.html" %}
+{% extends "admin/base.html" %}
 
-{% block subtitle %}{{ _('Syndicate failed datasets') }}{% endblock %}
+{% block content_primary_nav %}
+  {{ h.build_nav_icon('syndicate_sysadmin_ui', _('Syndicate configuration profiles')) }}
+  {{ h.build_nav_icon('syndicate_global_logs', _('Syndicate global logs')) }}
+{% endblock %}
 
 {% block primary_content_inner %}
   <h1>{{ _('Syndication logs') }}</h1>
@@ -47,4 +50,14 @@
       {% endif %}
     </tbody>
   </table>
+{% endblock %}
+
+{% block secondary_content %}
+    <h2 class="module-heading">
+        <i class="icon-info-sign"></i>
+        {{_("Syndicate global logs")}}
+    </h2>
+    <div class="module-content">
+        <p>Provides logging information about dataset syndication fails.</p>
+    </div>
 {% endblock %}

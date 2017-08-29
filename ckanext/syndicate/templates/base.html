@@ -1,5 +1,9 @@
 {% ckan_extends %}
 
+{% block styles %}
+  {{ super() }}
+  {% resource 'syndicate/styles' %}
+{% endblock %}
 {% block scripts %}
   {{ super() }}
   {% resource 'syndicate/scripts' %}

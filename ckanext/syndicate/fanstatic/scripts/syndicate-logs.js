@@ -10,10 +10,13 @@ ckan.module('syndicate-log-retry', function($, _) {
           e.preventDefault();
 
           var pkgId = this.options.pkgid;
+          var syndUrl = this.options.synd_url;
           var self = this;
 
           $.ajax({
-            'url': this.options.site_url + '/organization/syndicate-logs/syndicate-log-retry/' + pkgId,
+            'url': ckan.SITE_ROOT + '/syndicate-logs/syndicate-log-retry',
+            'method': 'POST',
+            'data': {pkgId: pkgId, syndUrl: syndUrl},
             'success': function(data) {
 
               if (data.success) {
@@ -49,9 +52,12 @@ ckan.module('syndicate-log-remove', function($, _) {
           e.preventDefault();
 
           var pkgId = this.options.pkgid;
+          var syndUrl = this.options.synd_url;
 
           $.ajax({
-            'url': this.options.site_url + '/organization/syndicate-logs/syndicate-log-remove/' + pkgId,
+            'url': ckan.SITE_ROOT + '/syndicate-logs/syndicate-log-remove',
+            'method': 'POST',
+            'data': {pkgId: pkgId, syndUrl: syndUrl},
             'success': function(data) {
 
               if (data.success) {

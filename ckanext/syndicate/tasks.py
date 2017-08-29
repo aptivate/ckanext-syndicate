@@ -17,6 +17,8 @@ from ckanext.syndicate.plugin import (
     get_syndicated_author,
     is_organization_preserved,
 )
+from ckanext.syndicate.plugin import _get_syndicate_profiles
+from ckanext.syndicate.syndicate_model.syndicate_config import SyndicateConfig
 from ckan import model
 from ckan.model.task_status import TaskStatus
 from datetime import datetime
@@ -27,12 +29,12 @@ logger = logging.getLogger(__name__)
 
 
 @celery.task(name='syndicate.sync_package')
-def sync_package_task(package, action, ckan_ini_filepath):
+def sync_package_task(package, action, ckan_ini_filepath, profile=None):
     logger = sync_package_task.get_logger()
     load_config(ckan_ini_filepath)
     register_translator()
     logger.info("Sync package %s, with action %s" % (package, action))
-    return sync_package(package, action)
+    return sync_package(package, action, None, profile)
 
 
 # TODO: why mp this
@@ -78,17 +80,22 @@ def register_translator():
         registry.register(translator, translator_obj)
 
 
-def get_target():
-    if hasattr(get_target, 'ckan'):
-        return get_target.ckan
-    ckan_url = config.get('ckan.syndicate.ckan_url')
-    api_key = config.get('ckan.syndicate.api_key')
-    user_agent = config.get('ckan.syndicate.user_agent', None)
-    assert ckan_url and api_key, "Task must have ckan_url and api_key"
+def get_target(target_url='', target_api=''):
+    if target_url and target_api:
+        ckan_url = target_url
+        api_key = target_api
+        user_agent = config.get('ckan.syndicate.user_agent', None)
+    else:
+        if hasattr(get_target, 'ckan'):
+            return get_target.ckan
+        ckan_url = config.get('ckan.syndicate.ckan_url')
+        api_key = config.get('ckan.syndicate.api_key')
+        user_agent = config.get('ckan.syndicate.user_agent', None)
+        assert ckan_url and api_key, "Task must have ckan_url and api_key"
 
-    ckan = ckanapi.RemoteCKAN(ckan_url, apikey=api_key, user_agent=user_agent)
-
+    ckan = ckanapi.RemoteCKAN(ckan_url, apikey=api_key, user_agent=user_agent) 
     get_target.ckan = ckan
+
     return ckan
 
 
@@ -104,7 +111,7 @@ def filter_resources(resources):
     ]
 
 
-def sync_package(package_id, action, ckan_ini_filepath=None):
+def sync_package(package_id, action, ckan_ini_filepath=None, profile=None):
     logger.info('sync package {0}'.format(package_id))
 
     # load the package at run of time task (rather than use package state at
@@ -120,11 +127,29 @@ def sync_package(package_id, action, ckan_ini_filepath=None):
         params,
     )
 
+    # syndicate_profiles = _get_syndicate_profiles()
+
     if action == 'dataset/create':
-        _create_package(package)
+        # if len(syndicate_profiles) > 0:
+        #     for profile in syndicate_profiles:
+                # try:
+        _create_package(package, profile)
+                # except Exception as e:
+                #     logger.error(e)
+                #     continue
+        # else:
+        #     _create_package(package)
 
     elif action == 'dataset/update':
-        _update_package(package)
+        # if len(syndicate_profiles) > 0:
+        #     for profile in syndicate_profiles:
+        #         try:
+        _update_package(package, profile)
+                # except Exception as e:
+                #     logger.error(e)
+                #     continue
+        # else:
+        #     _update_package(package)
     else:
         raise Exception('Unsupported action {0}'.format(action))
 
@@ -142,27 +167,42 @@ def replicate_remote_organization(org):
     return remote_org['id']
 
 
-def _create_package(package):
-    ckan = get_target()
-
+def _create_package(package, profile=None):
+    # syndicate_profiles = _get_syndicate_profiles()
+    ckan = get_target(
+        profile['syndicate_url'] if profile and profile.get('syndicate_url', '') else '',
+        profile['syndicate_api_key'] if profile and profile.get('syndicate_api_key', '') else ''
+    )
+    syndicate_to_url = (profile['syndicate_url']
+                        if profile and profile.get('syndicate_url', '')
+                        else config.get('ckan.syndicate.ckan_url'))
     # Create a new package based on the local instance
     new_package_data = dict(package)
     logging_id = new_package_data['id']
     del new_package_data['id']
 
+    # Take syndicate prefix from profile or use global config prefix
+    syndicate_name_prefix = (profile['syndicate_prefix']
+                        if profile and profile.get('syndicate_prefix', '')
+                        else get_syndicated_name_prefix())
     new_package_data['name'] = "%s-%s" % (
-        get_syndicated_name_prefix(),
+        syndicate_name_prefix,
         new_package_data['name'])
 
     new_package_data['extras'] = filter_extras(new_package_data['extras'])
     new_package_data['resources'] = filter_resources(package['resources'])
 
     org = new_package_data.pop('organization')
-
-    if is_organization_preserved():
+    # from celery.contrib import rdb
+    # rdb.set_trace()
+    if is_organization_preserved() or\
+    (profile and profile.get('syndicate_replicate_organization', False)):
         org_id = replicate_remote_organization(org)
     else:
-        org_id = get_syndicated_organization()
+        # Take syndicated org from the profile or use global config org
+        org_id = (profile['syndicate_organization']
+                if profile and profile.get('syndicate_organization', '')
+                else get_syndicated_organization())
 
     new_package_data['owner_org'] = org_id
 
@@ -175,14 +215,19 @@ def _create_package(package):
 
     try:
         remote_package = ckan.action.package_create(**new_package_data)
-        set_syndicated_id(package, remote_package['id'])
-        _remove_from_log(logging_id)
+        set_syndicated_id(package, remote_package['id'],
+                        profile['syndicate_field_id'] if profile else '')
+        _remove_from_log(logging_id, syndicate_to_url)
     except toolkit.ValidationError as e:
-        _log_errors(logging_id, e.error_dict, 'dataset/create')
+        _log_errors(logging_id, e.error_dict, 'dataset/create', syndicate_to_url)
         if 'That URL is already in use.' in e.error_dict.get('name', []):
             logger.info("package with name '{0}' already exists. Check creator.".format(
                 new_package_data['name']))
-            author = get_syndicated_author()
+
+            # Take syndicated author from the profile or use global config author
+            author = (profile['syndicate_author']
+                    if profile and profile.get('syndicate_author', '')
+                    else get_syndicated_author())
             if author is None:
                 raise
             try:
@@ -191,11 +236,11 @@ def _create_package(package):
                 remote_user = ckan.action.user_show(id=author)
             except toolkit.ValidationError as e:
                 log.error(e.errors)
-                _log_errors(logging_id, e.error_dict, 'dataset/create')
+                _log_errors(logging_id, e.error_dict, 'dataset/create', syndicate_to_url)
                 raise
             except toolkit.ObjectNotFound as e:
                 log.error('User "{0}" not found'.format(author))
-                _log_errors(logging_id, e.error_dict, 'dataset/create')
+                _log_errors(logging_id, {'error': 'User not found'}, 'dataset/create', syndicate_to_url)
                 raise
             else:
                 if remote_package['creator_user_id'] == remote_user['id']:
@@ -206,22 +251,31 @@ def _create_package(package):
                         id=remote_package['id'],
                         **new_package_data
                     )
-                    set_syndicated_id(package, remote_package['id'])
-                    _remove_from_log(logging_id)
+                    set_syndicated_id(package, remote_package['id'],
+                                    profile['syndicate_field_id'] if profile else '')
+                    _remove_from_log(logging_id, syndicate_to_url)
                 else:
                     logger.info(
                         "Creator of remote package '{0}' did not match '{1}'. Skipping".format(
                             remote_user['name'], author))
 
 
-def _update_package(package):
-    syndicated_id = get_pkg_dict_extra(package, get_syndicated_id())
+def _update_package(package, profile=None):
+
+    if profile and profile.get('syndicate_field_id', ''):
+        syndicated_id = get_pkg_dict_extra(package, profile['syndicate_field_id'])
+    else:
+        syndicated_id = get_pkg_dict_extra(package, get_syndicated_id())
 
     if syndicated_id is None:
-        _create_package(package)
+        _create_package(package, profile)
         return
 
-    ckan = get_target()
+    ckan = get_target(
+        profile['syndicate_url'] if profile and profile.get('syndicate_url', '') else '',
+        profile['syndicate_api_key'] if profile and profile.get('syndicate_api_key', '') else ''
+    )
+    syndicate_to_url = profile['syndicate_url'] if profile else config.get('ckan.syndicate.ckan_url')
 
     try:
         updated_package = dict(package)
@@ -235,10 +289,14 @@ def _update_package(package):
 
         org = updated_package.pop('organization')
 
-        if is_organization_preserved():
+        if is_organization_preserved() or\
+        (profile and profile.get('syndicate_replicate_organization', False)):
             org_id = replicate_remote_organization(org)
         else:
-            org_id = get_syndicated_organization()
+            # Take syndicated org from the profile or use global config org
+            org_id = (profile['syndicate_organization']
+                if profile and profile.get('syndicate_organization', '')
+                else get_syndicated_organization())
 
         updated_package['owner_org'] = org_id
 
@@ -255,18 +313,19 @@ def _update_package(package):
                 id=syndicated_id,
                 **updated_package
             )
-            _remove_from_log(logging_id)
+            _remove_from_log(logging_id, syndicate_to_url)
         except toolkit.ValidationError as e:
-            _log_errors(logging_id, e.error_dict, 'dataset/update')
+            _log_errors(logging_id, e.error_dict, 'dataset/update', syndicate_to_url)
     except ckanapi.NotFound:
-        _create_package(package)
+        _create_package(package, profile)
 
 
-def set_syndicated_id(local_package, remote_package_id):
+def set_syndicated_id(local_package, remote_package_id, field_id=''):
     """ Set the remote package id on the local package """
     extras = local_package['extras']
     extras_dict = dict([(o['key'], o['value']) for o in extras])
-    extras_dict.update({get_syndicated_id(): remote_package_id})
+    syndicate_field_id = field_id if field_id else get_syndicated_id()
+    extras_dict.update({syndicate_field_id: remote_package_id})
     extras = [{'key': k, 'value': v} for (k, v) in extras_dict.iteritems()]
     local_package['extras'] = extras
     _update_package_extras(local_package)
@@ -304,7 +363,7 @@ def _update_search_index(package_id, log):
     log.info('Search indexed %s', package['name'])
 
 
-def _log_errors(pkg_id, e, action):
+def _log_errors(pkg_id, e, action, profile_url):
     """
     Tell CKAN to log any error during the syndication.
 
@@ -322,14 +381,14 @@ def _log_errors(pkg_id, e, action):
 
     try:
         query = model.Session.query(TaskStatus).filter(
-            TaskStatus.entity_id == pkg_id).one()
+            TaskStatus.entity_id == pkg_id, TaskStatus.key == profile_url).one()
 
         query.error = task_dict['error']
         query.state = task_dict['state']
         query.last_updated = datetime.now()
     except NoResultFound:
         task_dict['entity_id'] = pkg_id
-        task_dict['key'] = pkg_id
+        task_dict['key'] = profile_url
 
         task_status = TaskStatus(**task_dict)
 
@@ -338,8 +397,8 @@ def _log_errors(pkg_id, e, action):
     model.Session.close()
 
 
-def _remove_from_log(pkg_id):
+def _remove_from_log(pkg_id, url):
     """Tell CKAN to remove the log from task_status table."""
     model.Session.query(model.TaskStatus).filter(
-        model.TaskStatus.entity_id == pkg_id).delete()
+        model.TaskStatus.entity_id == pkg_id, model.TaskStatus.key == url).delete()
     model.Session.commit()
