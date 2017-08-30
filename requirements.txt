@@ -1,6 +1,6 @@
 requests==2.7.0
 ckanapi==3.6
 celery==3.1.23
-pyOpenSSL==16.0.0
+pyOpenSSL==16.2.0
 ndg-httpsclient==0.4.1
 pyasn1==0.1.9
