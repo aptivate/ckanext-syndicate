@@ -14,6 +14,8 @@ from ckanext.syndicate.plugin import (
     get_syndicated_id,
     get_syndicated_name_prefix,
     get_syndicated_organization,
+    get_syndicated_author,
+    is_organization_preserved,
 )
 
 logger = logging.getLogger(__name__)
@@ -72,12 +74,16 @@ def register_translator():
 
 
 def get_target():
+    if hasattr(get_target, 'ckan'):
+        return get_target.ckan
     ckan_url = config.get('ckan.syndicate.ckan_url')
     api_key = config.get('ckan.syndicate.api_key')
     user_agent = config.get('ckan.syndicate.user_agent', None)
     assert ckan_url and api_key, "Task must have ckan_url and api_key"
 
     ckan = ckanapi.RemoteCKAN(ckan_url, apikey=api_key, user_agent=user_agent)
+
+    get_target.ckan = ckan
     return ckan
 
 
@@ -119,6 +125,19 @@ def sync_package(package_id, action, ckan_ini_filepath=None):
         raise Exception('Unsupported action {0}'.format(action))
 
 
+def replicate_remote_organization(org):
+    ckan = get_target()
+
+    try:
+        remote_org = ckan.action.organization_show(id=org['name'])
+    except toolkit.ObjectNotFound:
+        org.pop('image_url')
+        org.pop('id')
+        remote_org = ckan.action.organization_create(**org)
+
+    return remote_org['id']
+
+
 def _create_package(package):
     ckan = get_target()
 
@@ -132,8 +151,15 @@ def _create_package(package):
 
     new_package_data['extras'] = filter_extras(new_package_data['extras'])
     new_package_data['resources'] = filter_resources(package['resources'])
-    new_package_data['owner_org'] = get_syndicated_organization()
-    del new_package_data['organization']
+
+    org = new_package_data.pop('organization')
+
+    if is_organization_preserved():
+        org_id = replicate_remote_organization(org)
+    else:
+        org_id = get_syndicated_organization()
+
+    new_package_data['owner_org'] = org_id
 
     try:
         # TODO: No automated test
@@ -147,9 +173,35 @@ def _create_package(package):
         set_syndicated_id(package, remote_package['id'])
     except toolkit.ValidationError as e:
         if 'That URL is already in use.' in e.error_dict.get('name', []):
-            logger.info("package with name '{0}' already exists".format(
+            logger.info("package with name '{0}' already exists. Check creator.".format(
                 new_package_data['name']))
-        raise e
+            author = get_syndicated_author()
+            if author is None:
+                raise
+            try:
+                remote_package = ckan.action.package_show(
+                    id=new_package_data['name'])
+                remote_user = ckan.action.user_show(id=author)
+            except toolkit.ValidationError as e:
+                log.error(e.errors)
+                raise
+            except toolkit.ObjectNotFound as e:
+                log.error('User "{0}" not found'.format(author))
+                raise
+            else:
+                if remote_package['creator_user_id'] == remote_user['id']:
+                    logger.info("Author is the same({0}). Updating".format(
+                        author))
+
+                    ckan.action.package_update(
+                        id=remote_package['id'],
+                        **new_package_data
+                    )
+                    set_syndicated_id(package, remote_package['id'])
+                else:
+                    logger.info(
+                        "Creator of remote package '{0}' did not match '{1}'. Skipping".format(
+                            remote_user['name'], author))
 
 
 def _update_package(package):
@@ -169,7 +221,15 @@ def _update_package(package):
 
         updated_package['extras'] = filter_extras(package['extras'])
         updated_package['resources'] = filter_resources(package['resources'])
-        updated_package['owner_org'] = get_syndicated_organization()
+
+        org = updated_package.pop('organization')
+
+        if is_organization_preserved():
+            org_id = replicate_remote_organization(org)
+        else:
+            org_id = get_syndicated_organization()
+
+        updated_package['owner_org'] = org_id
 
         try:
             # TODO: No automated test

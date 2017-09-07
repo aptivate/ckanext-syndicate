@@ -99,6 +99,16 @@ Config Settings
     # (optional, default: constructed from ckanapi version and url)
     ckan.syndicate.user_agent = My User Agent
 
+    # Try to preserve dataset's organization
+    # (optional, default: false)
+    ckan.syndicate.replicate_organization = boolean
+
+    # The username whose api_key is used.
+    # If the dataset already exists on the target CKAN instance, the dataset will be updated
+    # only if this option is set and its creator matches this user name
+    # (optional, default: None)
+    ckan.syndicate.author = some_user_name
+
 ------------------------
 Development Installation
 ------------------------
