@@ -1,0 +1,8 @@
+{% import 'macros/form.html' as form %}
+{% call form.input_block(field.field_name, _('Syndication endpoints'), error=errors.syndication_endpoints, classes=['control-medium'], is_required=True) %}
+  <select id="{{ field.field_name }}" name="{{ field.field_name }}" multiple>
+    {% for option in h.get_syndicate_endpoints() %}
+      <option value="{{ option }}" {% if option in data[field.field_name] %}selected{% endif %}>{{ option }}</option>
+    {% endfor %}
+  </select>
+{% endcall %}

@@ -1,0 +1,6 @@
+{% ckan_extends %}
+
+{% block package_metadata_fields_custom %}
+  {% snippet 'scheming/form_snippets/syndication_endpoints.html', data=data, errors=errors, field={'field_name': 'syndication_endpoints'} %}
+  {{ super() }}
+{% endblock %}
