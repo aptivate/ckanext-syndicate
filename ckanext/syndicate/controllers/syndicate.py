@@ -17,6 +17,15 @@ import json
 abort = base.abort
 
 
+def _get_tasks_for_dataset(id):
+    query = model.Session.query(model.TaskStatus).filter(
+        model.TaskStatus.task_type == 'syndicate',
+        model.TaskStatus.entity_id == id
+    )
+
+    return query
+
+
 def _get_tasks(group_id=None):
     tasks = model.Session.query(model.TaskStatus)
 
@@ -94,7 +103,7 @@ def _prepare_form_dict(data_dict):
         if syndicate_ids[x]:
             profile_dict['id'] = syndicate_ids[x]
         profiles_list.append(profile_dict)
-    
+
     return profiles_list
 
 def _unique_sync_url(url, profile_list):
@@ -103,7 +112,7 @@ def _unique_sync_url(url, profile_list):
     for profile in profile_list:
         if profile['syndicate_url'] == url:
             url_list.append(url)
-    
+
     return True if len(url_list) == 1 else False
 
 class SyndicateController(base.BaseController):
@@ -120,11 +129,11 @@ class SyndicateController(base.BaseController):
         if request.method == 'POST':
             profiles = _prepare_form_dict(request.params)
             records_list = []
-            
+
 
             for profile in profiles:
                 unique_urls = _unique_sync_url(profile['syndicate_url'], profiles)
-            
+
             if unique_urls:
                 # Delete marked configs
                 _delete_profile_items(request.params.getall('syndicate_remove_profiles'))
@@ -145,7 +154,7 @@ class SyndicateController(base.BaseController):
                 model.Session.commit()
             else:
                 h.flash_error("Syndicate url must be unique.")
-        
+
         syndicate_profiles = _get_syndicate_profiles() if unique_urls else profiles
 
         return base.render(
@@ -195,6 +204,30 @@ class SyndicateController(base.BaseController):
             extra_vars={
                 "group_type": "organization", 'tasks': tasks
             })
+
+    def tasks_list_dataset(self, id):
+        """Method renders syndicate log page."""
+        context = {'model': model, 'session': model.Session,
+                   'user': c.user}
+
+        try:
+            data_dict = {'id': id}
+            h.check_access('package_update', data_dict)
+            c.pkg_dict = tk.get_action('package_show')(
+                context,
+                data_dict)
+        except NotFound:
+            abort(404, _('Dataset not found'))
+        except NotAuthorized:
+            abort(403, _('Not authorized'))
+
+        c.pkg = model.Package.get(id)
+        tasks = _get_tasks_for_dataset(c.pkg.id)
+
+        return base.render(
+            'package/syndication_logs.html',
+            extra_vars={'tasks': tasks})
+
 
     def syndicate_log_remove(self):
         """Ajax call trigger this method to remove log item."""

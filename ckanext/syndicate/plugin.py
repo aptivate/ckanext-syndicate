@@ -170,6 +170,7 @@ class SyndicatePlugin(plugins.SingletonPlugin):
                         'syndication endpoints of <{}>'
                     ).format(dataset.id), exc_info=True)
                     endpoints = []
+
                 if endpoints and profile['syndicate_url'] not in endpoints:
                     logger.debug('Skip endpoint {} for <{}>'.format(
                         profile['syndicate_url'], dataset.id))
@@ -232,6 +233,13 @@ class SyndicatePlugin(plugins.SingletonPlugin):
         ) as m:
             m.connect(
                 'syndicate_logs', '/syndicate-logs/{id}', action='tasks_list')
+
+        with SubMapper(
+            map, controller=syndicate_ctrl, path_prefix='/dataset/syndicate'
+        ) as m:
+            m.connect(
+                'syndicate_logs_dataset', '/{id}/syndicate-logs',
+                action='tasks_list_dataset')
 
         with SubMapper(
             map, controller=syndicate_ctrl, path_prefix='/syndicate-logs'
