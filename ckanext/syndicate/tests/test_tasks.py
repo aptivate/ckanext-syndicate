@@ -5,7 +5,7 @@ import ckan.plugins.toolkit as tk
 import ckan.tests.helpers as helpers
 import ckan.tests.factories as factories
 from ckan.lib.helpers import get_pkg_dict_extra
-from ckan.model import Session
+from ckan.model import Session, TaskStatus
 
 from ckanext.syndicate.plugin import get_syndicated_id
 
@@ -17,9 +17,11 @@ from ckanext.syndicate.tests.helpers import (
     assert_false,
     test_upload_file,
     _get_context,
+    assert_raises
 )
 
-from ckanext.syndicate.tasks import sync_package
+from ckanext.syndicate.tasks import (sync_package,
+                _log_errors, _remove_from_log)
 
 patch = mock.patch
 
@@ -29,6 +31,7 @@ class TestSyncTask(FunctionalTestBaseClass):
     def setup(self):
         super(TestSyncTask, self).setup()
         self.user = factories.User()
+        self.other_user = factories.User()
 
     @helpers.change_config('ckan.syndicate.name_prefix',
                            'test')
@@ -402,3 +405,98 @@ class TestSyncTask(FunctionalTestBaseClass):
                 get_pkg_dict_extra(updated2, get_syndicated_id())
             )
             del Session.revision
+
+    @helpers.change_config('ckan.syndicate.organization',
+                           'remote-org')
+    def test_log_errors(self):
+        local_org = factories.Organization(user=self.user,
+                                           name='local-org')
+        remote_org = factories.Organization(user=self.user,
+                                            name='remote-org')
+
+        helpers.call_action(
+            'member_create',
+            id=local_org['id'],
+            object=self.user['id'],
+            object_type='user',
+            capacity='editor')
+
+        helpers.call_action(
+            'member_create',
+            id=remote_org['id'],
+            object=self.other_user['id'],
+            object_type='user',
+            capacity='editor')
+
+        context = {
+            'user': self.user['name'],
+        }
+
+        dataset = helpers.call_action(
+            'package_create',
+            context=context,
+            name='syndicated_dataset',
+            owner_org=local_org['id'],
+            extras=[
+                {'key': 'syndicate', 'value': 'true'},
+            ],
+            resources=[{
+                'upload': test_upload_file,
+                'url': 'test_file.txt',
+                'url_type': 'upload',
+                'format': 'txt',
+                'name': 'test_file.txt',
+            }, {
+                'upload': test_upload_file,
+                'url': 'test_file1.txt',
+                'url_type': 'upload',
+                'format': 'txt',
+                'name': 'test_file1.txt',
+            }],
+        )
+
+        # Regular dataset to take future syndicated dataset url.
+        helpers.call_action(
+            'package_create',
+            context={'user': self.other_user['name']},
+            name='-syndicated_dataset',
+            owner_org=remote_org['id'],
+            extras=[],
+            resources=[]
+        )
+        assert_equal(dataset['name'], 'syndicated_dataset')
+
+        with patch('ckanext.syndicate.tasks.get_target') as mock_target:
+            # Mock API
+            mock_target.return_value = ckanapi.TestAppCKAN(
+                self._get_test_app(), apikey=self.user['apikey'])
+
+            # Syndicate to our Test CKAN instance
+            assert_raises(
+                tk.ValidationError,
+                sync_package,
+                dataset['id'],
+                'dataset/create'
+            )
+
+            # Expect new log to appear in our task status table
+            log_entry = Session.query(TaskStatus).filter(
+                TaskStatus.entity_id == dataset['id']).count()
+
+            assert_equal(log_entry, 1)
+
+            # Update the dataset and change it's name
+            helpers.call_action(
+                'package_update',
+                context=context,
+                id=dataset['id'],
+                name="syndicated_dataset_no_log"
+            )
+
+            # Run sync_package and expect log error is removed
+            sync_package(dataset['id'], 'dataset/create')
+
+            log_entry = Session.query(TaskStatus).filter(
+                TaskStatus.entity_id == dataset['id']).count()
+
+            assert_equal(log_entry, 0)
