@@ -142,6 +142,21 @@ New feature::
     - Using Syndicate CKAN UI, you can add multiple ckan instances;
     - UI provides syndicate logs page, that show all failed syndications. You can manually run syndication for each of these logs.
 
+---
+API
+---
+- syndicate_individual_dataset.
+  ex.: curl -X POST <CKAN_URL> -H "Authorization: <USER_API_KEY>" -d '{"id": "<DATASET_ID>", "api_key": "<REMOTE_INSTANCE_API_KEY>"}'
+  Trigger syndication for individual dataset.
+  Restrictions:
+  - User must have `package_update` access
+  - <REMOTE_INSTANCE_API_KEY> must be added as syndication endpoint to updated dataset.
+
+- syndicate_datasets_by_endpoint.
+  ex.: curl -X POST <CKAN_URL> -H "Authorization: <USER_API_KEY>" -d '{"api_key": "<REMOTE_INSTANCE_API_KEY>"}'
+  Trigger syndication for all dataset that have specified endpoing among `syndication_endpoints`.
+  Restrictions:
+  - User must have `sysadmin` access
 
 ------------------------
 Development Installation

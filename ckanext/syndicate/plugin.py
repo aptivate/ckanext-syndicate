@@ -1,11 +1,8 @@
-import os
-import uuid
 import json
 import logging
 
 import ckan.plugins as plugins
 import ckan.plugins.toolkit as toolkit
-from ckan.lib.celery_app import celery
 from ckan.lib.helpers import asbool
 from routes.mapper import SubMapper
 
@@ -14,7 +11,9 @@ import ckan.model as model
 from sqlalchemy.orm.exc import NoResultFound
 from ckan.model.domain_object import DomainObjectOperation
 from ckanext.syndicate.syndicate_model.syndicate_config import SyndicateConfig
+import ckanext.syndicate.actions as actions
 
+syndicate_dataset = actions._syndicate_dataset
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
@@ -64,28 +63,12 @@ def is_organization_preserved():
     return asbool(config.get('ckan.syndicate.replicate_organization', False))
 
 
-def _prepare_profile_dict(profile):
-    profile_dict = {
-            'id': profile.id,
-            'syndicate_url': profile.syndicate_url,
-            'syndicate_api_key': profile.syndicate_api_key,
-            'syndicate_organization': profile.syndicate_organization,
-            'syndicate_flag': profile.syndicate_flag,
-            'syndicate_field_id': profile.syndicate_field_id,
-            'syndicate_prefix': profile.syndicate_prefix,
-            'syndicate_replicate_organization': profile.syndicate_replicate_organization,
-            'syndicate_author': profile.syndicate_author
-        }
-
-    return profile_dict
-
-
 def _get_syndicate_profiles():
     profiles_list = []
     profiles = model.Session.query(SyndicateConfig).all()
 
     for profile in profiles:
-        profiles_list.append(_prepare_profile_dict(profile))
+        profiles_list.append(actions._prepare_profile_dict(profile))
 
     return profiles_list
 
@@ -96,20 +79,11 @@ def _get_syndicate_profile(syndicate_url):
     try:
         profile = model.Session.query(SyndicateConfig).filter(
             SyndicateConfig.syndicate_url == syndicate_url).one()
-        profile_dict = _prepare_profile_dict(profile)
+        profile_dict = actions._prepare_profile_dict(profile)
     except NoResultFound:
         pass
 
     return profile_dict
-
-
-def syndicate_dataset(package_id, topic, profile=None):
-    ckan_ini_filepath = os.path.abspath(config['__file__'])
-    celery.send_task(
-        'syndicate.sync_package',
-        args=[package_id, topic, ckan_ini_filepath, profile],
-        task_id='{}-{}'.format(str(uuid.uuid4()), package_id)
-    )
 
 
 class SyndicatePlugin(plugins.SingletonPlugin):
@@ -118,6 +92,15 @@ class SyndicatePlugin(plugins.SingletonPlugin):
     plugins.implements(plugins.IRoutes, inherit=True)
     plugins.implements(plugins.IValidators)
     plugins.implements(plugins.ITemplateHelpers)
+    plugins.implements(plugins.IActions)
+
+    # IActions
+
+    def get_actions(self):
+        return dict(
+            syndicate_individual_dataset=actions.syndicate_individual_dataset,
+            syndicate_datasets_by_endpoint=actions.syndicate_datasets_by_endpoint
+        )
 
     # ITemplateHelpers
 
@@ -170,6 +153,7 @@ class SyndicatePlugin(plugins.SingletonPlugin):
                         'syndication endpoints of <{}>'
                     ).format(dataset.id), exc_info=True)
                     endpoints = []
+
                 if endpoints and profile['syndicate_url'] not in endpoints:
                     logger.debug('Skip endpoint {} for <{}>'.format(
                         profile['syndicate_url'], dataset.id))
@@ -232,6 +216,13 @@ class SyndicatePlugin(plugins.SingletonPlugin):
         ) as m:
             m.connect(
                 'syndicate_logs', '/syndicate-logs/{id}', action='tasks_list')
+
+        with SubMapper(
+            map, controller=syndicate_ctrl, path_prefix='/dataset/syndicate'
+        ) as m:
+            m.connect(
+                'syndicate_logs_dataset', '/{id}/syndicate-logs',
+                action='tasks_list_dataset')
 
         with SubMapper(
             map, controller=syndicate_ctrl, path_prefix='/syndicate-logs'

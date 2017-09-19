@@ -3,7 +3,8 @@ from urlparse import urlparse
 import ckanapi
 import os
 import routes
-
+import ast
+import requests
 from pylons import config
 
 import ckan.plugins.toolkit as toolkit
@@ -93,7 +94,7 @@ def get_target(target_url='', target_api=''):
         user_agent = config.get('ckan.syndicate.user_agent', None)
         assert ckan_url and api_key, "Task must have ckan_url and api_key"
 
-    ckan = ckanapi.RemoteCKAN(ckan_url, apikey=api_key, user_agent=user_agent) 
+    ckan = ckanapi.RemoteCKAN(ckan_url, apikey=api_key, user_agent=user_agent)
     get_target.ckan = ckan
 
     return ckan
@@ -197,6 +198,20 @@ def _create_package(package, profile=None):
         set_syndicated_id(package, remote_package['id'],
                         profile['syndicate_field_id'] if profile else '')
         _remove_from_log(logging_id, syndicate_to_url)
+    except ckanapi.CKANAPIError as e:
+        try:
+            addr, status_code, message = ast.literal_eval(e.extra_msg)
+            error = {
+                'endpoint': addr, 'status_code': status_code,
+                'message': message
+            }
+        except (ValueError, SyntaxError):
+            error = e.extra_msg
+
+        _log_errors(
+            logging_id, {'error': error},
+            'dataset/create', syndicate_to_url)
+        raise
     except toolkit.ValidationError as e:
         _log_errors(logging_id, e.error_dict, 'dataset/create', syndicate_to_url)
         if 'That URL is already in use.' in e.error_dict.get('name', []):
@@ -295,6 +310,8 @@ def _update_package(package, profile=None):
             _remove_from_log(logging_id, syndicate_to_url)
         except toolkit.ValidationError as e:
             _log_errors(logging_id, e.error_dict, 'dataset/update', syndicate_to_url)
+        except requests.ConnectionError as e:
+            _log_errors(logging_id, {'error': {'message': e.message[0]}}, 'dataset/update', syndicate_to_url)
     except ckanapi.NotFound:
         _create_package(package, profile)
 
