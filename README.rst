@@ -113,8 +113,26 @@ Config Settings for using in .ini file
     # (optional, default: None)
     ckan.syndicate.author = some_user_name
 
+If syndication endpoints were specified via UI, by default every syndicated dataset will be pushed
+to all syndication endpoints. In order to specify syndication endpoints per dataset, one can update
+dataset schema and select particular endpoints(only if they were previously added globally) at dataset
+form. Depending on usage of ckanext-scheming, there are two possible solutions:
+
+1. Without `ckanext-scheming`. Add `syndicate_individual` to list of enabled plugins. Note: You may need to
+   reinstall `ckanext-syndicate` if this results in `PluginNotFoundException`.
+
+2. With `ckanext-scheming`. Add next field to your schema::
+    {
+        "field_name": "syndication_endpoints",
+        "label": "Syndication Endpoints",
+        "display_snippet": null,
+        "form_snippet": "syndication_endpoints.html",
+        "validators": "ignore_empty convert_to_list_if_string convert_to_json",
+        "output_validators": "ignore_missing convert_from_json"
+    }
+
 --------------------------
-Config Settings in CKAN UI 
+Config Settings in CKAN UI
 --------------------------
 
 link to admin page ``/syndicate-config`` sysadmins are only allowed.
