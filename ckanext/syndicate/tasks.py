@@ -4,6 +4,7 @@ import ckanapi
 import os
 import routes
 import ast
+import requests
 from pylons import config
 
 import ckan.plugins.toolkit as toolkit
@@ -309,6 +310,8 @@ def _update_package(package, profile=None):
             _remove_from_log(logging_id, syndicate_to_url)
         except toolkit.ValidationError as e:
             _log_errors(logging_id, e.error_dict, 'dataset/update', syndicate_to_url)
+        except requests.ConnectionError as e:
+            _log_errors(logging_id, {'error': {'message': e.message[0]}}, 'dataset/update', syndicate_to_url)
     except ckanapi.NotFound:
         _create_package(package, profile)
 
