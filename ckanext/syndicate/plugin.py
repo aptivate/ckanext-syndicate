@@ -98,7 +98,8 @@ class SyndicatePlugin(plugins.SingletonPlugin):
 
     def get_actions(self):
         return dict(
-            syndicate_individual_dataset=actions.syndicate_individual_dataset
+            syndicate_individual_dataset=actions.syndicate_individual_dataset,
+            syndicate_datasets_by_endpoint=actions.syndicate_datasets_by_endpoint
         )
 
     # ITemplateHelpers

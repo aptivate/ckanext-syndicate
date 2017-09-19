@@ -33,6 +33,30 @@ def syndicate_individual_dataset(context, data_dict):
     return {}
 
 
+def syndicate_datasets_by_endpoint(context, data_dict):
+    api_key = toolkit.get_or_bust(data_dict, ['api_key'])
+
+    # only sysadmin can perform this action
+    toolkit.check_access('config_option_update', context)
+    profile = model.Session.query(SyndicateConfig).filter_by(
+        syndicate_api_key=api_key
+    ).first()
+    if profile is None:
+        raise toolkit.ValidationError(
+            'Incorrect API Key for syndication endpoint')
+    packages = model.Session.query(
+        model.PackageExtra.package_id.distinct()
+    ).filter_by(key='syndication_endpoints').filter(
+        model.PackageExtra.value.contains(profile.syndicate_url))
+    prepared_profile = _prepare_profile_dict(profile)
+    for pkg in packages:
+        id = pkg[0]
+        _syndicate_dataset(id, 'dataset/update', prepared_profile)
+
+    return {}
+
+
+
 def _syndicate_dataset(package_id, topic, profile=None):
     ckan_ini_filepath = os.path.abspath(config['__file__'])
     celery.send_task(
