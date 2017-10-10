@@ -6,6 +6,7 @@ import os
 import routes
 import ast
 import requests
+import pylons
 from pylons import config
 
 import ckan.plugins.toolkit as toolkit
