@@ -42,15 +42,19 @@ To install ckanext-syndicate:
    config file (by default the config file is located at
    ``/etc/ckan/default/production.ini``).
 
-4. Restart CKAN. For example if you've deployed CKAN with Apache on Ubuntu::
+4. Run paster command to init ``syndicate_config`` table
+
+    paster --plugin=ckan syndicate init -c /etc/ckan/default/development.ini
+
+5. Restart CKAN. For example if you've deployed CKAN with Apache on Ubuntu::
 
     sudo service apache2 reload
 
-5. You will also need to set up celery. In a development environment this can be done with the following paster command from within your virtual environment::
+6. You will also need to set up celery. In a development environment this can be done with the following paster command from within your virtual environment::
 
     paster --plugin=ckan celeryd run -c /etc/ckan/default/development.ini
 
-6. In a production environment, celery can be configured through supervisor, for example ``/etc/supervisor/conf.d/celery.conf``::
+7. In a production environment, celery can be configured through supervisor, for example ``/etc/supervisor/conf.d/celery.conf``::
 
     [program:celery]
     autorestart=true
@@ -65,9 +69,9 @@ To install ckanext-syndicate:
     stopwaitsecs=600
     user=www-data
 
----------------
-Config Settings
----------------
+--------------------------------------
+Config Settings for using in .ini file
+--------------------------------------
 
 ::
 
@@ -108,6 +112,59 @@ Config Settings
     # only if this option is set and its creator matches this user name
     # (optional, default: None)
     ckan.syndicate.author = some_user_name
+
+If syndication endpoints were specified via UI, by default every syndicated dataset will be pushed
+to all syndication endpoints. In order to specify syndication endpoints per dataset, one can update
+dataset schema and select particular endpoints(only if they were previously added globally) at dataset
+form. Depending on usage of ckanext-scheming, there are two possible solutions:
+
+1. Without `ckanext-scheming`. Add `syndicate_individual` to list of enabled plugins. Note: You may need to
+   reinstall `ckanext-syndicate` if this results in `PluginNotFoundException`.
+
+2. With `ckanext-scheming`. Add next field to your schema::
+    {
+        "field_name": "syndication_endpoints",
+        "label": "Syndication Endpoints",
+        "display_snippet": null,
+        "form_snippet": "syndication_endpoints.html",
+        "validators": "ignore_empty convert_to_list_if_string convert_to_json",
+        "output_validators": "ignore_missing convert_from_json"
+    }
+
+--------------------------
+Config Settings in CKAN UI
+--------------------------
+
+link to admin page ``/syndicate-config`` sysadmins are only allowed.
+(.ini file config will be used if no configs are set or missing in the UI)
+
+New feature::
+    - Using Syndicate CKAN UI, you can add multiple ckan instances;
+    - UI provides syndicate logs page, that show all failed syndications. You can manually run syndication for each of these logs.
+
+---
+API
+---
+- syndicate_individual_dataset.
+  ex.: curl -X POST <CKAN_URL> -H "Authorization: <USER_API_KEY>" -d '{"id": "<DATASET_ID>", "api_key": "<REMOTE_INSTANCE_API_KEY>"}'
+  Trigger syndication for individual dataset.
+  Restrictions:
+  - User must have `package_update` access
+  - <REMOTE_INSTANCE_API_KEY> must be added as syndication endpoint to updated dataset.
+
+- syndicate_datasets_by_endpoint.
+  ex.: curl -X POST <CKAN_URL> -H "Authorization: <USER_API_KEY>" -d '{"api_key": "<REMOTE_INSTANCE_API_KEY>"}'
+  Trigger syndication for all dataset that have specified endpoing among `syndication_endpoints`.
+  Restrictions:
+  - User must have `sysadmin` access
+
+---
+CLI
+---
+
+Mass or individual syndication can be triggered as well from command line::
+
+  paster syndicate sync [ID] -c /ckan/development.ini
 
 ------------------------
 Development Installation

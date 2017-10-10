@@ -1,0 +1,27 @@
+{% extends 'package/edit_base.html' %}
+
+
+
+{% block subtitle %}{{ _('Syndicate failed datasets') }}{% endblock %}
+
+{% block primary_content_inner %}
+  <h1>{{ _('Syndication logs') }}</h1>
+
+  {% for task in tasks %}
+    <div class="btn-group pull-right">
+      <a class="btn btn-small syndicate-log-item-retry" href="#" data-module="syndicate-log-retry" data-module-pkgid="{{ task.entity_id }}" data-module-synd_url="{{ task.key }}" title="{{ _('Retry') }}">
+        {% block retry_button_text %}<i class="icon-refresh"></i>{% endblock %}
+      </a>
+      <a class="btn btn-danger btn-small syndicate-log-item-remove" href="#" data-module="syndicate-log-remove"  data-module-pkgid="{{ task.entity_id }}" data-module-synd_url="{{ task.key }}" title="{{ _('Delete') }}">
+        {% block delete_button_text %}<i class="icon-remove"></i>{% endblock %}
+      </a>
+    </div>
+    <h3>
+      {{ task.key }} ({{ task.last_updated }})
+    </h3>
+    <pre>{{ task.error }} </pre>
+    {% if not loop.last  %} <hr/> {% endif %}
+  {% else  %}
+    <i>{{ _('There are no syndication errors.') }}</i>
+  {% endfor %}
+{% endblock %}

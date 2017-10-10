@@ -1,0 +1,49 @@
+{% set syndicate_id = profile.id if profile else '' %}
+{% set syndicate_url = profile.syndicate_url if profile else '' %}
+{% set syndicate_api_key = profile.syndicate_api_key if profile else '' %}
+{% set syndicate_field_id = profile.syndicate_field_id if profile else '' %}
+{% set syndicate_organization = profile.syndicate_organization if profile else '' %}
+{% set syndicate_replicate_organization = profile.syndicate_replicate_organization if profile else False %}
+{% set syndicate_author = profile.syndicate_author if profile else '' %}
+{% set syndicate_prefix = profile.syndicate_prefix if profile else '' %}
+{% set syndicate_flag = profile.syndicate_flag if profile else 'syndicate' %}
+
+<div class="syndicate-profile-item form-group" style="border-bottom: 1px solid black;">
+    <div class='syndicate-profile-input'>
+        <label>Syndicate Url</label>
+        <input type="text" name="syndicate_url" value="{{syndicate_url}}" required>
+    </div>
+    <div class='syndicate-profile-input'>
+        <label>Syndicate API key</label>
+        <input type="text" name="syndicate_api_key" value="{{syndicate_api_key}}" required>
+    </div>
+    <div class='syndicate-profile-input'>
+        <label>Syndicated Field Id</label>
+        <input type="text" name="syndicate_field_id" value="{{syndicate_field_id}}" required>
+    </div>
+    <div class='syndicate-profile-input'>
+        <label>Syndicate Flag</label>
+        <input type="text" name="syndicate_flag" value="{{syndicate_flag}}">
+    </div>
+    <div class='syndicate-profile-input'>
+        <label>Syndicated Organization</label>
+        <input type="text" name="syndicate_organization" value="{{syndicate_organization}}">
+    </div>
+    <div class='syndicate-profile-input'>
+        <label>Replicate Organization</label>
+        <input type="checkbox"
+            name="syndicate_replicate_organization_"
+            value="1"
+            {% if syndicate_replicate_organization %} checked {% endif %}>
+    </div>
+    <div class='syndicate-profile-input'>
+        <label>Syndicated Author</label>
+        <input type="text" name="syndicate_author" value="{{syndicate_author}}">
+    </div>
+    <div class='syndicate-profile-input'>
+        <label>Syndicate Prefix</label>
+        <input type="text" name="syndicate_prefix" value="{{syndicate_prefix}}">
+    </div>
+    
+    <input type="hidden" name="syndicate_id" value="{{syndicate_id}}">
+</div>
