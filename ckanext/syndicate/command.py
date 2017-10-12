@@ -1,6 +1,7 @@
 from ckan.lib.cli import CkanCommand
 import paste.script
 import logging
+from time import sleep
 import ckan.model as ckan_model
 import ckanext.syndicate.syndicate_model.model as model
 from ckan.plugins import get_plugin
@@ -61,5 +62,6 @@ class SyndicateCommand(CkanCommand):
         if len(self.args) > 1:
             packages = packages.filter_by(id=self.args[1])
         for package in packages:
+            sleep(2)
             print('Sending syndication sygnal to {}'.format(package.id))
             plugin.notify(package, 'changed')
