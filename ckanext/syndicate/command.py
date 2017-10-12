@@ -60,7 +60,7 @@ class SyndicateCommand(CkanCommand):
         packages = ckan_model.Session.query(ckan_model.Package).filter_by(
             state='active')
         if len(self.args) > 1:
-            packages = packages.filter_by(id=self.args[1])
+            packages = [ckan_model.Package.get(self.args[1])]
         for package in packages:
             sleep(2)
             print('Sending syndication sygnal to {}'.format(package.id))
