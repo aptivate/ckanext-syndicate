@@ -62,6 +62,6 @@ class SyndicateCommand(CkanCommand):
         if len(self.args) > 1:
             packages = [ckan_model.Package.get(self.args[1])]
         for package in packages:
-            sleep(2)
-            print('Sending syndication sygnal to {}'.format(package.id))
+            sleep(0.02)
+            print('Sending syndication signal to {}'.format(package.id))
             plugin.notify(package, 'changed')
