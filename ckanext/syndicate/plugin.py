@@ -3,7 +3,6 @@ import os
 import ckan.plugins as plugins
 import ckan.plugins.toolkit as toolkit
 from ckan.lib.celery_app import celery
-from ckan.lib.helpers import asbool
 
 from pylons import config
 import ckan.model as model
@@ -33,7 +32,7 @@ def get_syndicated_organization():
 
 
 def is_organization_preserved():
-    return asbool(config.get('ckan.syndicate.replicate_organization', False))
+    return toolkit.asbool(config.get('ckan.syndicate.replicate_organization', False))
 
 
 def syndicate_dataset(package_id, topic):
@@ -74,7 +73,7 @@ class SyndicatePlugin(plugins.SingletonPlugin):
 
     def _syndicate(self, dataset):
         return (not dataset.private and
-                asbool(dataset.extras.get(get_syndicate_flag(), 'false')))
+                toolkit.asbool(dataset.extras.get(get_syndicate_flag(), 'false')))
 
     def _get_topic(self, prefix, operation):
         topics = {
