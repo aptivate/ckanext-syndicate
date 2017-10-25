@@ -158,6 +158,14 @@ API
   Restrictions:
   - User must have `sysadmin` access
 
+---
+CLI
+---
+
+Mass or individual syndication can be triggered as well from command line::
+
+  paster syndicate sync [ID] -c /ckan/development.ini
+
 ------------------------
 Development Installation
 ------------------------

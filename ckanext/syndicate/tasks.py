@@ -1,5 +1,5 @@
 import logging
-from urlparse import urlparse
+from urlparse import urlparse, urljoin
 import ckanapi
 import os
 import routes
@@ -142,7 +142,10 @@ def replicate_remote_organization(org):
     try:
         remote_org = ckan.action.organization_show(id=org['name'])
     except toolkit.ObjectNotFound:
-        org.pop('image_url')
+        image_url = org['image_url']
+        image_path = urlparse(image_url).path
+        org['image_url'] = urljoin(ckan.address, image_path)
+
         org.pop('id')
         remote_org = ckan.action.organization_create(**org)
 
