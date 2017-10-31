@@ -166,7 +166,6 @@ class SyndicatePlugin(plugins.SingletonPlugin):
                 syndicate_dataset(dataset.id, topic)
 
     def _syndicate(self, dataset, syndicate_flag=None):
-
         if syndicate_flag:
             return (not dataset.private
                     and asbool(dataset.extras.get(syndicate_flag, 'false')))
