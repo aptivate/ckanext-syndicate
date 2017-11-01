@@ -133,19 +133,12 @@ def sync_package(package_id, action, ckan_ini_filepath=None, profile=None):
     )
 
     if action == 'dataset/create':
-
-        # _create_package(package, profile)
-        pass
+        _create_package(package, profile)
     elif action == 'dataset/update':
-        # _update_package(package, profile)
-        pass
+        _update_package(package, profile)
     else:
         raise Exception('Unsupported action {0}'.format(action))
     try:
-
-        # toolkit.get_action('package_patch')(
-        #     {'ignore_auth': True, 'user': config.get('ckan.site_id')},
-        #     params)
         toolkit.get_action('after_syndication_action')({}, params)
 
     except KeyError:
