@@ -132,6 +132,10 @@ def sync_package(package_id, action, ckan_ini_filepath=None, profile=None):
         params,
     )
 
+    try:
+        toolkit.get_action('before_syndication_action')({}, params)
+    except KeyError:
+        pass
     if action == 'dataset/create':
         _create_package(package, profile)
     elif action == 'dataset/update':
@@ -140,7 +144,6 @@ def sync_package(package_id, action, ckan_ini_filepath=None, profile=None):
         raise Exception('Unsupported action {0}'.format(action))
     try:
         toolkit.get_action('after_syndication_action')({}, params)
-
     except KeyError:
         pass
 
@@ -201,7 +204,7 @@ def _create_package(package, profile=None):
     try:
         # TODO: No automated test
         new_package_data = toolkit.get_action('update_dataset_for_syndication')(
-            {}, {'dataset_dict': new_package_data})
+            {}, {'dataset_dict': new_package_data, 'package_id': package['id']})
     except KeyError:
         pass
 
@@ -310,7 +313,7 @@ def _update_package(package, profile=None):
             # TODO: No automated test
             updated_package = toolkit.get_action(
                 'update_dataset_for_syndication')(
-                {}, {'dataset_dict': updated_package})
+                {}, {'dataset_dict': updated_package, 'package_id': package['id']})
         except KeyError:
             pass
 
