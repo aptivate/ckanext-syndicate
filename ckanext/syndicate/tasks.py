@@ -154,11 +154,19 @@ def replicate_remote_organization(org):
     try:
         remote_org = ckan.action.organization_show(id=org['name'])
     except toolkit.ObjectNotFound:
-        image_url = org['image_url']
-        image_path = urlparse(image_url).path
-        org['image_url'] = urljoin(ckan.address, image_path)
-
+        default_img_url = urljoin(ckan.address, '/base/images/placeholder-organization.png')
+        image_url = org.get('image_display_url', default_img_url)
+        image_fd = requests.get(image_url, stream=True).raw
         org.pop('id')
+        org.pop('image_url', None)
+        org.pop('image_display_url', None)
+        org.pop('num_followers', None)
+        org.pop('tags', None)
+        org.pop('users', None)
+        org.pop('groups', None)
+
+        org.update(image_upload=image_fd)
+
         remote_org = ckan.action.organization_create(**org)
 
     return remote_org['id']
