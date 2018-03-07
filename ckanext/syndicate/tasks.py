@@ -168,6 +168,11 @@ def replicate_remote_organization(org):
         org.update(image_upload=image_fd)
 
         remote_org = ckan.action.organization_create(**org)
+    except (toolkit.NotAuthorized, ckanapi.CKANAPIError) as e:
+        logger.error('Error replication error(trying to continue): {}'.format(e))
+    except Exception as e:
+        logger.error('Error replication error: {}'.format(e))
+        raise
 
     return remote_org['id']
 
