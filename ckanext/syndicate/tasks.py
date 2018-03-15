@@ -150,10 +150,19 @@ def sync_package(package_id, action, ckan_ini_filepath=None, profile=None):
 
 def replicate_remote_organization(org):
     ckan = get_target()
+    remote_org = None
 
     try:
         remote_org = ckan.action.organization_show(id=org['name'])
     except toolkit.ObjectNotFound:
+        logger.error('Organization not found, creating new Organization.')
+    except (toolkit.NotAuthorized, ckanapi.CKANAPIError) as e:
+        logger.error('Error replication error(trying to continue): {}'.format(e))
+    except Exception as e:
+        logger.error('Error replication error: {}'.format(e))
+        raise
+
+    if not remote_org:
         default_img_url = urljoin(ckan.address, '/base/images/placeholder-organization.png')
         image_url = org.get('image_display_url', default_img_url)
         image_fd = requests.get(image_url, stream=True).raw
@@ -168,11 +177,6 @@ def replicate_remote_organization(org):
         org.update(image_upload=image_fd)
 
         remote_org = ckan.action.organization_create(**org)
-    except (toolkit.NotAuthorized, ckanapi.CKANAPIError) as e:
-        logger.error('Error replication error(trying to continue): {}'.format(e))
-    except Exception as e:
-        logger.error('Error replication error: {}'.format(e))
-        raise
 
     return remote_org['id']
 
