@@ -4,7 +4,7 @@ import uuid
 from pylons import config
 import ckan.model as model
 import ckan.plugins.toolkit as toolkit
-from ckan.lib.celery_app import celery
+import ckanext.syndicate
 
 from ckanext.syndicate.syndicate_model.syndicate_config import SyndicateConfig
 
@@ -58,12 +58,26 @@ def syndicate_datasets_by_endpoint(context, data_dict):
 
 
 def _syndicate_dataset(package_id, topic, profile=None):
+    import ckanext.syndicate.tasks as tasks
     ckan_ini_filepath = os.path.abspath(config['__file__'])
-    celery.send_task(
+    compat_enqueue(
         'syndicate.sync_package',
-        args=[package_id, topic, ckan_ini_filepath, profile],
-        task_id='{}-{}'.format(str(uuid.uuid4()), package_id)
-    )
+        tasks.sync_package_task,
+        [package_id, topic, ckan_ini_filepath])
+
+def compat_enqueue(name, fn, args=None):
+    u'''
+    Enqueue a background job using Celery or RQ.
+    '''
+    try:
+        # Try to use RQ
+        from ckan.plugins.toolkit import enqueue_job
+        enqueue_job(fn, args=args)
+    except ImportError:
+        # Fallback to Celery
+        import uuid
+        from ckan.lib.celery_app import celery
+        celery.send_task(name, args=args, task_id=str(uuid.uuid4()))
 
 
 def _prepare_profile_dict(profile):

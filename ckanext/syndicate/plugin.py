@@ -3,7 +3,6 @@ import logging
 
 import ckan.plugins as plugins
 import ckan.plugins.toolkit as toolkit
-from ckan.lib.helpers import asbool
 from routes.mapper import SubMapper
 
 from pylons import config
@@ -58,7 +57,7 @@ def get_syndicated_organization():
 
 
 def is_organization_preserved():
-    return asbool(config.get('ckan.syndicate.replicate_organization', False))
+    return toolkit.asbool(config.get('ckan.syndicate.replicate_organization', False))
 
 
 def _get_syndicate_profiles():
@@ -168,10 +167,10 @@ class SyndicatePlugin(plugins.SingletonPlugin):
     def _syndicate(self, dataset, syndicate_flag=None):
         if syndicate_flag:
             return (not dataset.private
-                    and asbool(dataset.extras.get(syndicate_flag, 'false')))
+                    and toolkit.asbool(dataset.extras.get(syndicate_flag, 'false')))
         else:
             return (not dataset.private and
-                    asbool(dataset.extras.get(get_syndicate_flag(), 'false')))
+                    toolkit.asbool(dataset.extras.get(get_syndicate_flag(), 'false')))
 
     def _get_topic(self, prefix, operation):
         topics = {
