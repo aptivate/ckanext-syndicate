@@ -7,7 +7,6 @@ import routes
 from pylons import config
 
 import ckan.plugins.toolkit as toolkit
-from ckan.lib.celery_app import celery
 from ckan.lib.helpers import get_pkg_dict_extra
 from ckanext.syndicate.plugin import (
     get_syndicate_flag,
@@ -21,7 +20,16 @@ from ckanext.syndicate.plugin import (
 logger = logging.getLogger(__name__)
 
 
-@celery.task(name='syndicate.sync_package')
+
+try:
+    from ckan.lib.celery_app import celery
+
+    @celery.task(name='syndicate.sync_package')
+    def sync_package_task_celery(*args, **kwargs):
+        return sync_package_task(*args, **kwargs)
+except ImportError:
+    pass
+
 def sync_package_task(package, action, ckan_ini_filepath):
     logger = sync_package_task.get_logger()
     load_config(ckan_ini_filepath)
