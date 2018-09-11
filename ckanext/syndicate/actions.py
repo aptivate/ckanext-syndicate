@@ -17,18 +17,17 @@ def syndicate_individual_dataset(context, data_dict):
     ).first()
     if profile is None:
         raise toolkit.ValidationError(
-            'Incorrect API Key for syndication endpoint')
+            'Incorrect API Key for syndication endpoint'
+        )
 
     pkg_dict = toolkit.get_action('package_show')(context, {'id': id})
     endpoints = pkg_dict.get('syndication_endpoints', [])
     if profile.syndicate_url not in endpoints:
         raise toolkit.ValidationError(
-            'Syndication endpoint not configured for current dataset')
+            'Syndication endpoint not configured for current dataset'
+        )
 
-    _syndicate_dataset(
-        id, 'dataset/update',
-        _prepare_profile_dict(profile)
-    )
+    _syndicate_dataset(id, 'dataset/update', _prepare_profile_dict(profile))
 
     return {}
 
@@ -43,11 +42,13 @@ def syndicate_datasets_by_endpoint(context, data_dict):
     ).first()
     if profile is None:
         raise toolkit.ValidationError(
-            'Incorrect API Key for syndication endpoint')
+            'Incorrect API Key for syndication endpoint'
+        )
     packages = model.Session.query(
         model.PackageExtra.package_id.distinct()
     ).filter_by(key='syndication_endpoints').filter(
-        model.PackageExtra.value.contains(profile.syndicate_url))
+        model.PackageExtra.value.contains(profile.syndicate_url)
+    )
     prepared_profile = _prepare_profile_dict(profile)
     for pkg in packages:
         id = pkg[0]
@@ -56,14 +57,14 @@ def syndicate_datasets_by_endpoint(context, data_dict):
     return {}
 
 
-
 def _syndicate_dataset(package_id, topic, profile=None):
     import ckanext.syndicate.tasks as tasks
     ckan_ini_filepath = os.path.abspath(config['__file__'])
     compat_enqueue(
-        'syndicate.sync_package',
-        tasks.sync_package_task,
-        [package_id, topic, ckan_ini_filepath])
+        'syndicate.sync_package', tasks.sync_package_task,
+        [package_id, topic, ckan_ini_filepath, profile]
+    )
+
 
 def compat_enqueue(name, fn, args=None):
     u'''
@@ -82,15 +83,17 @@ def compat_enqueue(name, fn, args=None):
 
 def _prepare_profile_dict(profile):
     profile_dict = {
-            'id': profile.id,
-            'syndicate_url': profile.syndicate_url,
-            'syndicate_api_key': profile.syndicate_api_key,
-            'syndicate_organization': profile.syndicate_organization,
-            'syndicate_flag': profile.syndicate_flag,
-            'syndicate_field_id': profile.syndicate_field_id,
-            'syndicate_prefix': profile.syndicate_prefix,
-            'syndicate_replicate_organization': profile.syndicate_replicate_organization,
-            'syndicate_author': profile.syndicate_author
-        }
+        'id': profile.id,
+        'syndicate_url': profile.syndicate_url,
+        'syndicate_api_key': profile.syndicate_api_key,
+        'syndicate_organization': profile.syndicate_organization,
+        'syndicate_flag': profile.syndicate_flag,
+        'syndicate_field_id': profile.syndicate_field_id,
+        'syndicate_prefix': profile.syndicate_prefix,
+        'syndicate_replicate_organization': profile.
+        syndicate_replicate_organization,
+        'syndicate_author': profile.syndicate_author,
+        'predicate': profile.predicate,
+    }
 
     return profile_dict

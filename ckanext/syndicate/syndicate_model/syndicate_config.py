@@ -1,16 +1,11 @@
-from sqlalchemy import (
-    Table,
-    Column,
-    UnicodeText,
-    Boolean
-)
-from ckan.model.types import make_uuid
-from sqlalchemy.orm.exc import NoResultFound
-import ckan.model.meta as meta
 from ckan.model.domain_object import DomainObject
-import ckan.model as model
+from ckan.model.types import make_uuid
+import ckan.plugins.toolkit as tk
+
+from sqlalchemy import Column, UnicodeText, Boolean
+
 from ckanext.syndicate.syndicate_model.model import Base
-import ckan.plugins.toolkit as toolkit
+
 
 class SyndicateConfig(Base, DomainObject):
     __tablename__ = 'syndicate_config'
@@ -19,12 +14,26 @@ class SyndicateConfig(Base, DomainObject):
     syndicate_url = Column(UnicodeText, unique=True)
     syndicate_api_key = Column(UnicodeText)
     syndicate_organization = Column(UnicodeText)
+    syndicate_replicate_organization = Column(Boolean)
+    syndicate_author = Column(UnicodeText)
+    predicate = Column(UnicodeText)
+
+    # not added to _for_seed
     syndicate_flag = Column(UnicodeText)
     syndicate_field_id = Column(UnicodeText)
     syndicate_prefix = Column(UnicodeText)
-    syndicate_replicate_organization = Column(Boolean)
-    syndicate_author = Column(UnicodeText)
 
     @classmethod
     def get_syndicate_config(cls):
         pass
+
+    @classmethod
+    def _for_seed(cls, data):
+        return cls(
+            syndicate_url=data[0],
+            syndicate_api_key=data[1],
+            syndicate_organization=data[2],
+            syndicate_replicate_organization=tk.asbool(data[3]),
+            syndicate_author=data[4],
+            predicate=data[5],
+        )

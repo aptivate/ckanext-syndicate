@@ -1,10 +1,15 @@
-from ckan.lib.cli import CkanCommand
-import paste.script
 import logging
 from time import sleep
+from itertools import izip_longest as zip_longest
+
 import ckan.model as ckan_model
-import ckanext.syndicate.syndicate_model.model as model
+import ckan.plugins.toolkit as tk
+import paste.script
+from ckan.lib.cli import CkanCommand
 from ckan.plugins import get_plugin
+
+import ckanext.syndicate.syndicate_model.model as model
+from ckanext.syndicate.syndicate_model.syndicate_config import SyndicateConfig
 
 log = logging.getLogger('ckanext.syndicate')
 
@@ -26,7 +31,8 @@ class SyndicateCommand(CkanCommand):
         '--config',
         dest='config',
         default='development.ini',
-        help='Config file to use.')
+        help='Config file to use.'
+    )
 
     def command(self):
         self._load_config()
@@ -45,6 +51,7 @@ class SyndicateCommand(CkanCommand):
     def _init(self):
         self._drop()
         self._create()
+        self._seed()
         log.info("DB tables are reinitialized")
 
     def _drop(self):
@@ -55,12 +62,28 @@ class SyndicateCommand(CkanCommand):
         model.create_tables()
         log.info("DB tables are setup")
 
+    def _seed(self):
+        options = self.read_vars(self.filename, 'app:main')
+        prefix = 'ckan.syndicate.'
+        keys = (
+            'ckan_url', 'api_key', 'organization', 'replicate_organization',
+            'author', 'predicate'
+        )
+        profile_lists = zip_longest(
+            *map(lambda key: tk.aslist(options.get(prefix + key)), keys)
+        )
+        for item in profile_lists:
+            profile = SyndicateConfig._for_seed(item)
+            ckan_model.Session.add(profile)
+            print('Added profile: {}'.format(profile))
+        ckan_model.Session.commit()
+
     def _sync(self):
         plugin = get_plugin('syndicate')
         from ckanext.syndicate.plugin import get_syndicate_flag
 
-        packages = ckan_model.Session.query(ckan_model.Package).filter_by(
-            state='active')
+        packages = ckan_model.Session.query(ckan_model.Package
+                                            ).filter_by(state='active')
         if len(self.args) > 1:
             packages = [ckan_model.Package.get(self.args[1])]
 

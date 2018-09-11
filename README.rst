@@ -73,7 +73,7 @@ To install ckanext-syndicate:
 Config Settings for using in .ini file
 --------------------------------------
 
-::
+If you are using syndication to single endpoint::
 
     # The URL of the site to be syndicated to
     ckan.syndicate.ckan_url = https://data.humdata.org/
@@ -112,6 +112,29 @@ Config Settings for using in .ini file
     # only if this option is set and its creator matches this user name
     # (optional, default: None)
     ckan.syndicate.author = some_user_name
+
+If you are using syndication to multiple endpoints, specify multiple
+values for each section, divided either with space or with
+newline. Only distinction is `ckan.syndicate.predicate` directive,
+which specifies predicate for check, whether dataset need to be
+syndicated for current profile. This option uses
+`import.path:function_name` format and predicate function will be
+called with syndicated package object as single argument. If function
+returns falsy value, no syndication happens::
+
+  ckan.syndicate.api_key = 4c38ad33-0d77-4213-a6da-b394f66146e7 c203782c-2c5e-410e-b47e-001818b9a674
+  ckan.syndicate.author =
+		      sergey
+		      sergey
+  ckan.syndicate.ckan_url =  http://127.0.0.1:8000
+                             http://127.0.0.1:7000
+  ckan.syndicate.replicate_organization = true false
+  ckan.syndicate.organization = default pdp
+  ckan.syndicate.predicate = __builtin__:bool ckanext.anzlic.helpers:is_pdp_dataset
+
+In order to define, which organization is considered as PDP organization, use next config directive::
+
+    ckan.pdp.organization = Department of Planning and Environment
 
 If syndication endpoints were specified via UI, by default every syndicated dataset will be pushed
 to all syndication endpoints. In order to specify syndication endpoints per dataset, one can update

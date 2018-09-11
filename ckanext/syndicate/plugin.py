@@ -1,5 +1,6 @@
 import json
 import logging
+import importlib
 
 import ckan.plugins as plugins
 import ckan.plugins.toolkit as toolkit
@@ -24,7 +25,8 @@ def _convert_from_json(value):
             value = json.loads(value)
         except ValueError:
             logger.error(
-                "Error during unserializing json in validator", exc_info=True)
+                "Error during unserializing json in validator", exc_info=True
+            )
     return value
 
 
@@ -57,7 +59,9 @@ def get_syndicated_organization():
 
 
 def is_organization_preserved():
-    return toolkit.asbool(config.get('ckan.syndicate.replicate_organization', False))
+    return toolkit.asbool(
+        config.get('ckan.syndicate.replicate_organization', False)
+    )
 
 
 def _get_syndicate_profiles():
@@ -75,7 +79,8 @@ def _get_syndicate_profile(syndicate_url):
 
     try:
         profile = model.Session.query(SyndicateConfig).filter(
-            SyndicateConfig.syndicate_url == syndicate_url).one()
+            SyndicateConfig.syndicate_url == syndicate_url
+        ).one()
         profile_dict = actions._prepare_profile_dict(profile)
     except NoResultFound:
         pass
@@ -97,7 +102,8 @@ class SyndicatePlugin(plugins.SingletonPlugin):
         return dict(
             syndicate_individual_dataset=actions.syndicate_individual_dataset,
             syndicate_datasets_by_endpoint=actions.
-            syndicate_datasets_by_endpoint)
+            syndicate_datasets_by_endpoint
+        )
 
     # ITemplateHelpers
 
@@ -109,7 +115,8 @@ class SyndicatePlugin(plugins.SingletonPlugin):
     def get_validators(self):
         return dict(
             convert_from_json=_convert_from_json,
-            convert_to_json=_convert_to_json)
+            convert_to_json=_convert_to_json
+        )
 
     # IConfigurer
 
@@ -138,25 +145,42 @@ class SyndicatePlugin(plugins.SingletonPlugin):
 
         if syndicate_profiles:
             for profile in syndicate_profiles:
-                str_endpoints = dataset.extras.get(u'syndication_endpoints',
-                                                   u'[]')
+                str_endpoints = dataset.extras.get(
+                    u'syndication_endpoints', u'[]'
+                )
                 try:
                     endpoints = json.loads(str_endpoints)
                 except ValueError:
-                    logger.error(
-                        ('Failed to unserialize '
-                         'syndication endpoints of <{}>').format(dataset.id),
-                        exc_info=True)
+                    logger.error((
+                        'Failed to unserialize '
+                        'syndication endpoints of <{}>'
+                    ).format(dataset.id),
+                                 exc_info=True)
                     endpoints = []
 
                 if endpoints and profile['syndicate_url'] not in endpoints:
-                    logger.debug('Skip endpoint {} for <{}>'.format(
-                        profile['syndicate_url'], dataset.id))
+                    logger.debug(
+                        'Skip endpoint {} for <{}>'.format(
+                            profile['syndicate_url'], dataset.id
+                        )
+                    )
                     continue
-
+                if profile['predicate']:
+                    lib, func = profile['predicate'].split(':')
+                    module = importlib.import_module(lib)
+                    predicate = getattr(module, func)
+                    if not predicate(dataset):
+                        logger.info(
+                            'Dataset[{}] will not syndicate becaus of predicate[{}] rejection'.
+                            format(dataset.id, profile['predicate'])
+                        )
+                        continue
                 if self._syndicate(dataset, profile['syndicate_flag']):
-                    logger.debug("Syndicate <{}> to {}".format(
-                        dataset.id, profile['syndicate_url']))
+                    logger.debug(
+                        "Syndicate <{}> to {}".format(
+                            dataset.id, profile['syndicate_url']
+                        )
+                    )
                     syndicate_dataset(dataset.id, topic, profile)
                 else:
                     continue
@@ -166,11 +190,16 @@ class SyndicatePlugin(plugins.SingletonPlugin):
 
     def _syndicate(self, dataset, syndicate_flag=None):
         if syndicate_flag:
-            return (not dataset.private
-                    and toolkit.asbool(dataset.extras.get(syndicate_flag, 'false')))
+            return (
+                not dataset.private and
+                toolkit.asbool(dataset.extras.get(syndicate_flag, 'false'))
+            )
         else:
-            return (not dataset.private and
-                    toolkit.asbool(dataset.extras.get(get_syndicate_flag(), 'false')))
+            return (
+                not dataset.private and toolkit.asbool(
+                    dataset.extras.get(get_syndicate_flag(), 'false')
+                )
+            )
 
     def _get_topic(self, prefix, operation):
         topics = {
@@ -185,57 +214,10 @@ class SyndicatePlugin(plugins.SingletonPlugin):
 
         return None
 
-    # IRouter
 
-    def before_map(self, map):
-
-        # Syndicate UI
-        # Sundicate Sysadmin configs page
-        syndicate_ctrl = "ckanext.syndicate.controllers.syndicate:SyndicateController"
-        with SubMapper(map, controller=syndicate_ctrl, path_prefix='') as m:
-            m.connect(
-                'syndicate_sysadmin_ui',
-                '/syndicate-config',
-                action='syndicate_config')
-            m.connect(
-                'syndicate_global_logs',
-                '/syndicate-global-logs',
-                action='syndicate_global_logs')
-
-        # Syndicate organizations page
-        with SubMapper(
-                map, controller=syndicate_ctrl,
-                path_prefix='/organization') as m:
-            m.connect(
-                'syndicate_logs', '/syndicate-logs/{id}', action='tasks_list')
-
-        with SubMapper(
-                map, controller=syndicate_ctrl,
-                path_prefix='/dataset/syndicate') as m:
-            m.connect(
-                'syndicate_logs_dataset',
-                '/{id}/syndicate-logs',
-                action='tasks_list_dataset')
-
-        with SubMapper(
-                map, controller=syndicate_ctrl,
-                path_prefix='/syndicate-logs') as m:
-            # Ajax syndicate log remove
-            m.connect(
-                'syndicate_log_remove',
-                '/syndicate-log-remove',
-                action='syndicate_log_remove')
-            # Ajax syndicate log retry
-            m.connect(
-                'syndicate_log_remove',
-                '/syndicate-log-retry',
-                action='syndicate_log_retry')
-
-        return map
-
-
-class SyndicateDatasetPlugin(plugins.SingletonPlugin,
-                             toolkit.DefaultDatasetForm):
+class SyndicateDatasetPlugin(
+    plugins.SingletonPlugin, toolkit.DefaultDatasetForm
+):
     plugins.implements(plugins.IDatasetForm)
 
     # IDatasetForm
