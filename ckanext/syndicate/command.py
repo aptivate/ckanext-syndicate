@@ -63,7 +63,7 @@ class SyndicateCommand(CkanCommand):
         log.info("DB tables are setup")
 
     def _seed(self):
-        options = self.read_vars(self.filename, 'app:main')
+        options = self.read_vars(self.options.config, 'app:main')
         prefix = 'ckan.syndicate.'
         keys = (
             'ckan_url', 'api_key', 'organization', 'replicate_organization',
