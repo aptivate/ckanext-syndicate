@@ -422,13 +422,13 @@ def set_syndicated_id(local_package, remote_package_id, field_id=''):
     """ Set the remote package id on the local package """
     syndicate_field_id = field_id if field_id else get_syndicated_id()
 
-    q = model.Session.query(model.PackageExtra).join(
+    ext_id = model.Session.query(model.PackageExtra.id).join(
         model.Package, model.Package.id == model.PackageExtra.package_id
     ).filter(
         model.Package.id == local_package['id'],
         model.PackageExtra.key == syndicate_field_id
-    )
-    if not q.count():
+    ).first()
+    if not ext_id:
         rev = model.repo.new_revision()
         existing = model.PackageExtra(
             package_id=local_package['id'], key=syndicate_field_id,
@@ -438,7 +438,9 @@ def set_syndicated_id(local_package, remote_package_id, field_id=''):
         model.Session.commit()
         model.Session.flush()
     else:
-        q.update({'value': remote_package_id})
+        model.Session.query(model.PackageExtra).filter_by(
+            id=ext_id
+        ).update({'value': remote_package_id})
     _update_search_index(local_package['id'], logger)
 
 
