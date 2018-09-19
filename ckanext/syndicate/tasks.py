@@ -180,7 +180,7 @@ def replicate_remote_organization(org):
             ckan.address, '/base/images/placeholder-organization.png'
         )
         image_url = org.get('image_display_url', default_img_url)
-        image_fd = requests.get(image_url, stream=True).raw
+        image_fd = requests.get(image_url, stream=True, timeout=2).raw
         org.pop('id')
         org.pop('image_url', None)
         org.pop('image_display_url', None)
@@ -420,14 +420,26 @@ def _update_package(package, profile=None):
 
 def set_syndicated_id(local_package, remote_package_id, field_id=''):
     """ Set the remote package id on the local package """
-    return
-    extras = local_package['extras']
-    extras_dict = dict([(o['key'], o['value']) for o in extras])
     syndicate_field_id = field_id if field_id else get_syndicated_id()
-    extras_dict.update({syndicate_field_id: remote_package_id})
-    extras = [{'key': k, 'value': v} for (k, v) in extras_dict.iteritems()]
-    local_package['extras'] = extras
-    _update_package_extras(local_package)
+
+    q = model.Session.query(model.PackageExtra).join(
+        model.Package, model.Package.id == model.PackageExtra.package_id
+    ).filter(
+        model.Package.id == local_package['id'],
+        model.PackageExtra.key == syndicate_field_id
+    )
+    if not q.count():
+        rev = model.repo.new_revision()
+        existing = model.PackageExtra(
+            package_id=local_package['id'], key=syndicate_field_id,
+            value=remote_package_id
+        )
+        model.Session.add(existing)
+        model.Session.commit()
+        model.Session.flush()
+    else:
+        q.update({'value': remote_package_id})
+    _update_search_index(local_package['id'], logger)
 
 
 def _update_package_extras(package):

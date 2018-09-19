@@ -131,6 +131,7 @@ returns falsy value, no syndication happens::
   ckan.syndicate.replicate_organization = true false
   ckan.syndicate.organization = default pdp
   ckan.syndicate.predicate = __builtin__:bool ckanext.anzlic.helpers:is_pdp_dataset
+  ckan.syndicate.field_id = syndicate_seed_id syndicate_pdp_id
 
 In order to define, which organization is considered as PDP organization, use next config directive::
 

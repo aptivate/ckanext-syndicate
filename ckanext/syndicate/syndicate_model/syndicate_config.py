@@ -17,11 +17,11 @@ class SyndicateConfig(Base, DomainObject):
     syndicate_replicate_organization = Column(Boolean)
     syndicate_author = Column(UnicodeText)
     predicate = Column(UnicodeText)
+    syndicate_field_id = Column(UnicodeText)
+    syndicate_flag = Column(UnicodeText)
+    syndicate_prefix = Column(UnicodeText)
 
     # not added to _for_seed
-    syndicate_flag = Column(UnicodeText)
-    syndicate_field_id = Column(UnicodeText)
-    syndicate_prefix = Column(UnicodeText)
 
     @classmethod
     def get_syndicate_config(cls):
@@ -36,4 +36,7 @@ class SyndicateConfig(Base, DomainObject):
             syndicate_replicate_organization=tk.asbool(data[3]),
             syndicate_author=data[4],
             predicate=data[5],
+            syndicate_field_id=data[6],
+            syndicate_flag=data[7],
+            syndicate_prefix=data[8],
         )

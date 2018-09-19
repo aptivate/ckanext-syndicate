@@ -67,7 +67,7 @@ class SyndicateCommand(CkanCommand):
         prefix = 'ckan.syndicate.'
         keys = (
             'ckan_url', 'api_key', 'organization', 'replicate_organization',
-            'author', 'predicate'
+            'author', 'predicate', 'field_id', 'flag', 'prefix'
         )
         profile_lists = zip_longest(
             *map(lambda key: tk.aslist(options.get(prefix + key)), keys)
