@@ -1,9 +1,0 @@
-{% ckan_extends %}
-
-{% block content_primary_nav %}
-  {{ super() }}
-
-  {% if pkg and pkg.syndication_endpoints  %}
-    {{ h.build_nav_icon('syndicate_logs_dataset', _('Syndication logs'), id=pkg.name, icon='list') }}
-  {% endif %}
-{% endblock %}
