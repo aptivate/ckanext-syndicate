@@ -343,6 +343,17 @@ def _update_package(package, profile=None):
         syndicated_id = get_pkg_dict_extra(
             package, profile['syndicate_field_id']
         )
+        if syndicated_id is None and profile['syndicate_field_id']:
+            sync_id = model.Session.query(model.PackageExtra)\
+                .filter(
+                    model.PackageExtra.package_id == package.get('id'),
+                    model.PackageExtra.key == profile['syndicate_field_id']
+                    ).first()
+            if sync_id and sync_id.state == 'deleted':
+                syndicated_id = sync_id.value
+                model.Session.query(model.PackageExtra).filter_by(
+                    id=sync_id.id
+                ).update({'state': 'active'})
     else:
         syndicated_id = get_pkg_dict_extra(package, get_syndicated_id())
 
@@ -398,7 +409,8 @@ def _update_package(package, profile=None):
                 'dataset_dict': updated_package,
                 'package_id': package['id']
             })
-        except KeyError:
+        except KeyError as e:
+            logger.error("Error: {0}".format(e))
             pass
 
         try:
@@ -440,7 +452,7 @@ def set_syndicated_id(local_package, remote_package_id, field_id=''):
     else:
         model.Session.query(model.PackageExtra).filter_by(
             id=ext_id
-        ).update({'value': remote_package_id})
+        ).update({'value': remote_package_id, 'state': 'active'})
     _update_search_index(local_package['id'], logger)
 
 
