@@ -254,7 +254,8 @@ def _create_package(package, profile=None):
             'dataset_dict': new_package_data,
             'package_id': package['id']
         })
-    except KeyError:
+    except KeyError as e:
+        logger.error("Error in update_dataset_for_syndication: {0}".format(e))
         pass
 
     try:
@@ -338,7 +339,6 @@ def _create_package(package, profile=None):
 
 
 def _update_package(package, profile=None):
-
     if profile and profile.get('syndicate_field_id', ''):
         syndicated_id = get_pkg_dict_extra(
             package, profile['syndicate_field_id']
@@ -410,16 +410,72 @@ def _update_package(package, profile=None):
                 'package_id': package['id']
             })
         except KeyError as e:
-            logger.error("Error: {0}".format(e))
+            logger.error("Error in update_dataset_for_syndication: {0}".format(e))
             pass
 
         try:
             ckan.action.package_update(id=syndicated_id, **updated_package)
             _remove_from_log(logging_id, syndicate_to_url)
         except toolkit.ValidationError as e:
-            _log_errors(
-                logging_id, e.error_dict, 'dataset/update', syndicate_to_url
-            )
+            # Extra check for new CKAN dataset deletion logic added at CKAN 2.7 and higher
+            if 'That URL is already in use.' in e.error_dict.get('name', []):
+                logger.info("Check syndicated_id")
+                if syndicated_id:
+                    logger.info("Syndicated_id exist.")
+                    # Take syndicated author from the profile or use global config author
+                    logger.info(
+                        "package with name '{0}' already exists. Check creator.".
+                        format(updated_package['name'])
+                    )
+                    author = (
+                        profile['syndicate_author']
+                        if profile and profile.get('syndicate_author', '') else
+                        get_syndicated_author()
+                    )
+                    if author is None:
+                        raise
+                    try:
+                        remote_package = ckan.action.package_show(
+                            id=updated_package['name']
+                        )
+                        remote_user = ckan.action.user_show(id=author)
+                    except toolkit.ValidationError as e:
+                        log.error(e.errors)
+                        _log_errors(
+                            logging_id, e.error_dict, 'dataset/create',
+                            syndicate_to_url
+                        )
+                        raise
+                    except toolkit.ObjectNotFound as e:
+                        log.error('User "{0}" not found'.format(author))
+                        _log_errors(
+                            logging_id, {'error': 'User not found'}, 'dataset/create',
+                            syndicate_to_url
+                        )
+                        raise
+                    else:
+                        if remote_package['creator_user_id'] == remote_user['id']:
+                            logger.info(
+                                "Author is the same({0}). Updating".format(author)
+                            )
+
+                            ckan.action.package_update(
+                                id=remote_package['id'], **updated_package
+                            )
+                            set_syndicated_id(
+                                package, remote_package['id'],
+                                profile['syndicate_field_id'] if profile else ''
+                            )
+                            _remove_from_log(logging_id, syndicate_to_url)
+                        else:
+                            logger.info(
+                                "Creator of remote package '{0}' did not match '{1}'. Skipping".
+                                format(remote_user['name'], author)
+                            )
+            else:
+                _log_errors(
+                    logging_id, e.error_dict, 'dataset/update', syndicate_to_url
+                )
         except requests.ConnectionError as e:
             _log_errors(
                 logging_id, {'error': {
