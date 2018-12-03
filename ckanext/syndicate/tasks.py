@@ -345,10 +345,8 @@ def _update_package(package, profile=None):
         )
         if syndicated_id is None and profile['syndicate_field_id']:
             sync_id = model.Session.query(model.PackageExtra)\
-                .filter(
-                    model.PackageExtra.package_id == package.get('id'),
-                    model.PackageExtra.key == profile['syndicate_field_id']
-                    ).first()
+                .filter(model.PackageExtra.package_id == package.get('id'))\
+                .filter(model.PackageExtra.key == profile['syndicate_field_id']).first()
             if sync_id and sync_id.state == 'deleted':
                 syndicated_id = sync_id.value
                 model.Session.query(model.PackageExtra).filter_by(
