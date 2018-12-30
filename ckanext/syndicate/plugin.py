@@ -32,7 +32,8 @@ def get_syndicated_organization():
 
 
 def is_organization_preserved():
-    return toolkit.asbool(config.get('ckan.syndicate.replicate_organization', False))
+    return toolkit.asbool(config.get(
+        'ckan.syndicate.replicate_organization', False))
 
 
 def syndicate_dataset(package_id, topic):
@@ -55,7 +56,7 @@ class SyndicatePlugin(plugins.SingletonPlugin):
         toolkit.add_public_directory(config_, 'public')
         toolkit.add_resource('fanstatic', 'syndicate')
 
-    ## Based on ckanext-webhooks plugin
+    # Based on ckanext-webhooks plugin
     # IDomainObjectNotification & IResourceURLChange
     def notify(self, entity, operation=None):
         if not operation:
@@ -73,7 +74,8 @@ class SyndicatePlugin(plugins.SingletonPlugin):
 
     def _syndicate(self, dataset):
         return (not dataset.private and
-                toolkit.asbool(dataset.extras.get(get_syndicate_flag(), 'false')))
+                toolkit.asbool(dataset.extras.get(
+                    get_syndicate_flag(), 'false')))
 
     def _get_topic(self, prefix, operation):
         topics = {

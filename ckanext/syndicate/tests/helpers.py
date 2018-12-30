@@ -27,6 +27,7 @@ class UploadLocalFileStorage(cgi.FieldStorage):
         self.filename = fp.name
         self.file = fp
 
+
 test_upload_file = UploadLocalFileStorage(test_file)
 
 

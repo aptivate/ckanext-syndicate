@@ -20,7 +20,9 @@ class TestPlugin(helpers.FunctionalTestBase):
 class TestNotify(TestPlugin):
     def setup(self):
         super(TestNotify, self).setup()
-        dataset = factories.Dataset(extras=[{'key': 'syndicate', 'value': 'true'}])
+        dataset = factories.Dataset(extras=[{
+            'key': 'syndicate', 'value': 'true'
+            }])
 
         self.dataset = model.Package.get(dataset['id'])
 
@@ -28,7 +30,9 @@ class TestNotify(TestPlugin):
 class TestDatasetNotify(TestNotify):
     def setup(self):
         super(TestDatasetNotify, self).setup()
-        self.syndicate_patch = patch('ckanext.syndicate.plugin.syndicate_dataset')
+        self.syndicate_patch = patch(
+            'ckanext.syndicate.plugin.syndicate_dataset'
+            )
 
     def test_syndicates_task_for_create(self):
         with self.syndicate_patch as mock_syndicate:

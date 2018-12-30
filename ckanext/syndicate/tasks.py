@@ -37,6 +37,8 @@ log = logging.getLogger('ckanext.syndicate.tasks')
 
 def get_logger():
     return log
+
+
 sync_package_task.get_logger = get_logger
 
 
@@ -48,7 +50,7 @@ def load_config(ckan_ini_filepath):
     ckan.config.environment.load_environment(conf.global_conf,
                                              conf.local_conf)
 
-    ## give routes enough information to run url_for
+    # give routes enough information to run url_for
     parsed = urlparse(conf.get('ckan.site_url', 'http://0.0.0.0'))
     request_config = routes.request_config()
     request_config.host = parsed.netloc + parsed.path
@@ -163,8 +165,10 @@ def _create_package(package):
 
     try:
         # TODO: No automated test
-        new_package_data = toolkit.get_action('update_dataset_for_syndication')(
-            {}, {'dataset_dict': new_package_data})
+        new_package_data = toolkit.get_action(
+            'update_dataset_for_syndication')(
+            {}, {'dataset_dict': new_package_data}
+            )
     except KeyError:
         pass
 
@@ -173,8 +177,11 @@ def _create_package(package):
         set_syndicated_id(package, remote_package['id'])
     except toolkit.ValidationError as e:
         if 'That URL is already in use.' in e.error_dict.get('name', []):
-            logger.info("package with name '{0}' already exists. Check creator.".format(
-                new_package_data['name']))
+            logger.info((
+                "package with name '{0}' "
+                "already exists. Check creator.").format(
+                new_package_data['name'])
+            )
             author = get_syndicated_author()
             if author is None:
                 raise
@@ -200,7 +207,8 @@ def _create_package(package):
                     set_syndicated_id(package, remote_package['id'])
                 else:
                     logger.info(
-                        "Creator of remote package '{0}' did not match '{1}'. Skipping".format(
+                        ("Creator of remote package '{0}' "
+                            "did not match '{1}'. Skipping").format(
                             remote_user['name'], author))
 
 
