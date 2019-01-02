@@ -17,6 +17,9 @@ from ckanext.syndicate.plugin import (
     get_syndicated_author,
     is_organization_preserved,
 )
+import ckan.plugins as plugins
+
+from ckanext.syndicate.interfaces import ISyndication
 
 logger = logging.getLogger(__name__)
 
@@ -170,17 +173,9 @@ def _create_package(package):
 
     new_package_data['owner_org'] = org_id
 
-    try:
-        # TODO: No automated test
-        new_package_data = toolkit.get_action(
-            'update_dataset_for_syndication')(
-            {}, {
-            'dataset_dict': new_package_data,
-            'package_id': package['id']}
-            )
-    except KeyError as e:
-        logger.error("{0}".format(e))
-        pass
+    # TODO: No automated test
+    for plugin in plugins.PluginImplementations(ISyndication):
+        plugin.before_syndication_create(new_package_data, package['id'])
 
     try:
         logger.info("Creating Dataset '{0}'".format(new_package_data['name']))
@@ -252,16 +247,9 @@ def _update_package(package):
 
         updated_package['owner_org'] = org_id
 
-        try:
-            # TODO: No automated test
-            updated_package = toolkit.get_action(
-                'update_dataset_for_syndication')(
-                {}, {
-                'dataset_dict': updated_package,
-                'package_id': package['id']})
-        except KeyError as e:
-            logger.error("{0}".format(e))
-            pass
+        # TODO: No automated test
+        for plugin in plugins.PluginImplementations(ISyndication):
+            plugin.before_syndication_update(updated_package, package['id'])
 
         logger.info("Updating Dataset {0}".format(syndicated_id))
         ckan.action.package_update(

@@ -110,6 +110,15 @@ Config Settings
     ckan.syndicate.author = some_user_name
 
 ------------------------
+Syndication Hooks
+------------------------
+There is ``ISyndication`` interface that have two methods::
+
+    before_syndication_create - Returns modified dict before syndication creates package.
+
+    before_syndication_update - Returns modified dict before syndication updates package.
+
+------------------------
 Development Installation
 ------------------------
 
