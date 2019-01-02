@@ -119,9 +119,11 @@ def sync_package(package_id, action, ckan_ini_filepath=None):
     )
 
     if action == 'dataset/create':
+        logger.info("In create package stage")
         _create_package(package)
 
     elif action == 'dataset/update':
+        logger.info("In update package stage")
         _update_package(package)
     else:
         raise Exception('Unsupported action {0}'.format(action))
@@ -142,20 +144,25 @@ def replicate_remote_organization(org):
 
 def _create_package(package):
     ckan = get_target()
-
     # Create a new package based on the local instance
     new_package_data = dict(package)
     del new_package_data['id']
 
-    new_package_data['name'] = "%s-%s" % (
-        get_syndicated_name_prefix(),
-        new_package_data['name'])
+    syndicate_name_prefix = get_syndicated_name_prefix()
+
+    new_package_data['name'] = new_package_data['name']
+
+    if syndicate_name_prefix:
+        new_package_data['name'] = "{prefix}-{name}".format(
+            prefix=syndicate_name_prefix,
+            name=new_package_data['name'])
 
     new_package_data['extras'] = filter_extras(new_package_data['extras'])
     new_package_data['resources'] = filter_resources(package['resources'])
 
     org = new_package_data.pop('organization')
 
+    logger.info("Updating Organization for Dataset")
     if is_organization_preserved():
         org_id = replicate_remote_organization(org)
     else:
@@ -167,12 +174,16 @@ def _create_package(package):
         # TODO: No automated test
         new_package_data = toolkit.get_action(
             'update_dataset_for_syndication')(
-            {}, {'dataset_dict': new_package_data}
+            {}, {
+            'dataset_dict': new_package_data,
+            'package_id': package['id']}
             )
-    except KeyError:
+    except KeyError as e:
+        logger.error("{0}".format(e))
         pass
 
     try:
+        logger.info("Creating Dataset '{0}'".format(new_package_data['name']))
         remote_package = ckan.action.package_create(**new_package_data)
         set_syndicated_id(package, remote_package['id'])
     except toolkit.ValidationError as e:
@@ -216,6 +227,7 @@ def _update_package(package):
     syndicated_id = get_pkg_dict_extra(package, get_syndicated_id())
 
     if syndicated_id is None:
+        logger.info("Syndicated ID is missing, heading to package create")
         _create_package(package)
         return
 
@@ -232,6 +244,7 @@ def _update_package(package):
 
         org = updated_package.pop('organization')
 
+        logger.info("Updating Organization for Dataset")
         if is_organization_preserved():
             org_id = replicate_remote_organization(org)
         else:
@@ -243,10 +256,14 @@ def _update_package(package):
             # TODO: No automated test
             updated_package = toolkit.get_action(
                 'update_dataset_for_syndication')(
-                {}, {'dataset_dict': updated_package})
-        except KeyError:
+                {}, {
+                'dataset_dict': updated_package,
+                'package_id': package['id']})
+        except KeyError as e:
+            logger.error("{0}".format(e))
             pass
 
+        logger.info("Updating Dataset {0}".format(syndicated_id))
         ckan.action.package_update(
             id=syndicated_id,
             **updated_package
