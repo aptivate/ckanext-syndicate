@@ -23,10 +23,18 @@ from ckanext.syndicate.interfaces import ISyndication
 
 logger = logging.getLogger(__name__)
 
+try:
+    from ckan.lib.celery_app import celery
 
-@celery.task(name='syndicate.sync_package')
+    @celery.task(name='syndicate.sync_package')
+    def sync_package_task_celery(*args, **kwargs):
+        return sync_package_task(*args, **kwargs)
+except ImportError:
+    pass
+
+
 def sync_package_task(
-        package, action, ckan_ini_filepath, syndicate_profile=None):
+    package, action, ckan_ini_filepath, syndicate_profile=None):
     logger = sync_package_task.get_logger()
     load_config(ckan_ini_filepath)
     register_translator()

@@ -46,12 +46,28 @@ def is_organization_preserved():
 
 
 def syndicate_dataset(package_id, topic, syndicate_profile=None):
+    import ckanext.syndicate.tasks as tasks
     ckan_ini_filepath = os.path.abspath(config['__file__'])
-    celery.send_task(
-        'syndicate.sync_package',
-        args=[package_id, topic, ckan_ini_filepath, syndicate_profile],
-        task_id='{}-{}'.format(str(uuid.uuid4()), package_id)
+    compat_enqueue(
+        'syndicate.sync_package', tasks.sync_package_task,
+        [package_id, topic, ckan_ini_filepath, syndicate_profile]
     )
+
+
+def compat_enqueue(name, fn, args=None):
+    u'''
+    Enqueue a background job using Celery or RQ.
+    '''
+    try:
+        # Try to use RQ
+        from ckan.plugins.toolkit import enqueue_job
+        enqueue_job(fn, args=args)
+    except ImportError:
+        # Fallback to Celery
+        import uuid
+        from ckan.lib.celery_app import celery
+        celery.send_task(name, args=args, task_id='{}-{}'.format(
+            str(uuid.uuid4()), args[0]))
 
 
 class SyndicatePlugin(plugins.SingletonPlugin):
