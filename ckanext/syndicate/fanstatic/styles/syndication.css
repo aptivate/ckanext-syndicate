@@ -1,0 +1,20 @@
+.syndication-primary .module {
+	margin-top: 0;
+	margin-bottom: 0;
+}
+
+.syndicate-profile-item {
+	margin-bottom: 20px;
+	border: 1px solid #ecf0f1;
+	box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.05);
+	padding: 20px 0;
+}
+
+.syndicate-profile-item .syndicate-profile-input {
+	display: inline-block;
+	margin: 5px;
+}
+
+.syndicate-profile-item .actions-section {
+	padding: 10px;
+}

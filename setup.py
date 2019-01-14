@@ -81,9 +81,10 @@ setup(
     entry_points='''
         [ckan.plugins]
         syndicate=ckanext.syndicate.plugin:SyndicatePlugin
-
-	[babel.extractors]
-	ckan = ckan.lib.extract:extract_ckan
+        [paste.paster_command]
+        syndicate=ckanext.syndicate.command:SyndicateCommand
+    [babel.extractors]
+    ckan = ckan.lib.extract:extract_ckan
 
         [ckan.celery_task]
         tasks=ckanext.syndicate.celery_import:task_imports

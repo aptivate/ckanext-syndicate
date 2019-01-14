@@ -1,0 +1,24 @@
+<div class="syndicate-profile-item form-group" index={{ index }}>
+
+	{{ form.input("syndicate_ckan_url_" + index|string, label=_('Syndicate Url'), value=profile.syndicate_ckan_url, is_required=true, classes=['syndicate-profile-input']) }}
+
+	{{ form.input("syndicate_api_key_" + index|string, label=_('Syndicate API key'), value=profile.syndicate_api_key, is_required=true, classes=['syndicate-profile-input']) }}
+
+	{{ form.input("syndicate_field_id_" + index|string, label=_('Syndicate Field ID'), value=profile.syndicate_field_id, is_required=true, classes=['syndicate-profile-input']) }}
+
+	{{ form.input("syndicate_flag_" + index|string, label=_('Syndicate Flag'), value=profile.syndicate_flag, classes=['syndicate-profile-input']) }}
+
+	{{ form.input("syndicate_name_prefix_" + index|string, label=_('Syndicate Name Prefix'), value=profile.syndicate_name_prefix, classes=['syndicate-profile-input']) }}
+
+	{{ form.input("syndicate_author_" + index|string, label=_('Syndicate Author'), value=profile.syndicate_author, classes=['syndicate-profile-input']) }}
+
+	{{ form.input("syndicate_organization_" + index|string, label=_('Syndicate Organization'), value=profile.syndicate_organization, classes=['syndicate-profile-input']) }}
+
+	{{ form.select("syndicate_replicate_organization_" + index|string, label=_('Replicate Organization'), options=[{'text': 'No', 'value': 'no'},{'text': 'Yes', 'value': 'yes'}], selected=profile.syndicate_replicate_organization, classes=['syndicate-profile-input']) }}
+
+	<input type="hidden" name="id_{{ index }}" value="{{profile.id}}">
+    
+    <div class="actions-section">
+		<button data-module="syndicate-remove-profile" data-module-profile_id="{{profile.id}}" class="btn-danger pull-left">Remove Profile</button>
+	</div>
+</div>
