@@ -7,6 +7,8 @@ import paste.script
 from ckan.lib.cli import CkanCommand
 from ckan.plugins import get_plugin
 
+import ckanext.syndicate.syndicate_model.model as model
+
 log = logging.getLogger('ckanext.syndicate')
 
 
@@ -35,8 +37,27 @@ class SyndicateCommand(CkanCommand):
 
         if not len(self.args):
             print self.usage
+        elif self.args[0] == 'init':
+            self._init()
+        elif self.args[0] == 'drop':
+            self._drop()
+        elif self.args[0] == 'create':
+            self._create()
         elif self.args[0] == 'sync':
             self._sync()
+
+    def _init(self):
+        self._drop()
+        self._create()
+        log.info("DB tables are reinitialized")
+
+    def _drop(self):
+        model.drop_tables()
+        log.info("DB tables are removed")
+
+    def _create(self):
+        model.create_tables()
+        log.info("DB tables are setup")
 
     def _sync(self):
         plugin = get_plugin('syndicate')

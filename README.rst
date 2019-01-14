@@ -119,6 +119,23 @@ There is ``ISyndication`` interface that have two methods::
     before_syndication_update - Returns modified dict before syndication updates package.
 
 ------------------------
+Multiple Syndication Profiles
+------------------------
+In order to activate Multiple Syndication Profiles:
+
+1. Initialize Syndication tables by running ``paster`` commnad:
+
+    ``paster syndicate init -c PATH_TO_CONFIG``
+
+2. Add extra config field in order to make sydication use multiple profiles:
+
+    # Enables multiple Syndication profiles
+    # If set to ``true``, Syndication will use profiles the been set on admin page. By default set to ``False``.
+    ckan.syndicate.use_multiple_profiles = true
+
+3. On ``/ckan-admin/syndication-profiles`` page, you can add syndication profiles. Only Sysadmins can have an access to this page.
+
+------------------------
 Development Installation
 ------------------------
 

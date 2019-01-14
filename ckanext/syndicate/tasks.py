@@ -25,12 +25,13 @@ logger = logging.getLogger(__name__)
 
 
 @celery.task(name='syndicate.sync_package')
-def sync_package_task(package, action, ckan_ini_filepath):
+def sync_package_task(
+        package, action, ckan_ini_filepath, syndicate_profile=None):
     logger = sync_package_task.get_logger()
     load_config(ckan_ini_filepath)
     register_translator()
     logger.info("Sync package %s, with action %s" % (package, action))
-    return sync_package(package, action)
+    return sync_package(package, action, None, syndicate_profile)
 
 
 # TODO: why mp this
@@ -78,11 +79,15 @@ def register_translator():
         registry.register(translator, translator_obj)
 
 
-def get_target():
+def get_target(profile=None):
     if hasattr(get_target, 'ckan'):
         return get_target.ckan
-    ckan_url = config.get('ckan.syndicate.ckan_url')
-    api_key = config.get('ckan.syndicate.api_key')
+    ckan_url = profile[
+        'syndicate_ckan_url'] if profile else config.get(
+            'ckan.syndicate.ckan_url')
+    api_key = profile[
+        'syndicate_api_key'] if profile else config.get(
+            'ckan.syndicate.api_key')
     user_agent = config.get('ckan.syndicate.user_agent', None)
     assert ckan_url and api_key, "Task must have ckan_url and api_key"
 
@@ -92,9 +97,11 @@ def get_target():
     return ckan
 
 
-def filter_extras(extras):
+def filter_extras(extras, profile=None):
+    syndicate_flag = profile.get(
+        'syndicate_flag', 'syndicate') if profile else get_syndicate_flag()
     extras_dict = dict([(o['key'], o['value']) for o in extras])
-    extras_dict.pop(get_syndicate_flag(), None)
+    extras_dict.pop(syndicate_flag, None)
     return [{'key': k, 'value': v} for (k, v) in extras_dict.iteritems()]
 
 
@@ -104,7 +111,7 @@ def filter_resources(resources):
     ]
 
 
-def sync_package(package_id, action, ckan_ini_filepath=None):
+def sync_package(package_id, action, ckan_ini_filepath=None, profile=None):
     logger.info('sync package {0}'.format(package_id))
 
     # load the package at run of time task (rather than use package state at
@@ -120,20 +127,19 @@ def sync_package(package_id, action, ckan_ini_filepath=None):
         context,
         params,
     )
-
     if action == 'dataset/create':
         logger.info("In create package stage")
-        _create_package(package)
+        _create_package(package, profile)
 
     elif action == 'dataset/update':
         logger.info("In update package stage")
-        _update_package(package)
+        _update_package(package, profile)
     else:
         raise Exception('Unsupported action {0}'.format(action))
 
 
-def replicate_remote_organization(org):
-    ckan = get_target()
+def replicate_remote_organization(org, profile=None):
+    ckan = get_target(profile)
 
     try:
         remote_org = ckan.action.organization_show(id=org['name'])
@@ -145,13 +151,22 @@ def replicate_remote_organization(org):
     return remote_org['id']
 
 
-def _create_package(package):
-    ckan = get_target()
+def _create_package(package, profile=None):
+    syndicate_name_prefix = profile[
+        'syndicate_name_prefix'] if profile else get_syndicated_name_prefix()
+    syndicate_replicate_org = profile.get(
+        'syndicate_replicate_organization',
+        False) if profile else is_organization_preserved()
+    syndicate_org = profile.get(
+        'syndicate_organization',
+        None) if profile else get_syndicated_organization()
+    syndicate_author = profile[
+        'syndicate_author'] if profile else get_syndicated_author()
+
+    ckan = get_target(profile)
     # Create a new package based on the local instance
     new_package_data = dict(package)
     del new_package_data['id']
-
-    syndicate_name_prefix = get_syndicated_name_prefix()
 
     new_package_data['name'] = new_package_data['name']
 
@@ -160,16 +175,20 @@ def _create_package(package):
             prefix=syndicate_name_prefix,
             name=new_package_data['name'])
 
-    new_package_data['extras'] = filter_extras(new_package_data['extras'])
-    new_package_data['resources'] = filter_resources(package['resources'])
+    new_package_data['extras'] = filter_extras(
+        new_package_data['extras'], profile)
+    new_package_data['resources'] = filter_resources(
+        package['resources'])
 
     org = new_package_data.pop('organization')
 
-    logger.info("Updating Organization for Dataset")
-    if is_organization_preserved():
-        org_id = replicate_remote_organization(org)
+    if syndicate_replicate_org:
+        logger.info("Replicating Organization for Dataset")
+        org_id = replicate_remote_organization(org, profile)
     else:
-        org_id = get_syndicated_organization()
+        logger.info("Syndicating into {org} Organization.".format(
+            org=syndicate_org))
+        org_id = syndicate_org
 
     new_package_data['owner_org'] = org_id
 
@@ -180,7 +199,7 @@ def _create_package(package):
     try:
         logger.info("Creating Dataset '{0}'".format(new_package_data['name']))
         remote_package = ckan.action.package_create(**new_package_data)
-        set_syndicated_id(package, remote_package['id'])
+        set_syndicated_id(package, remote_package['id'], profile)
     except toolkit.ValidationError as e:
         if 'That URL is already in use.' in e.error_dict.get('name', []):
             logger.info((
@@ -188,7 +207,7 @@ def _create_package(package):
                 "already exists. Check creator.").format(
                 new_package_data['name'])
             )
-            author = get_syndicated_author()
+            author = syndicate_author
             if author is None:
                 raise
             try:
@@ -205,12 +224,11 @@ def _create_package(package):
                 if remote_package['creator_user_id'] == remote_user['id']:
                     logger.info("Author is the same({0}). Updating".format(
                         author))
-
                     ckan.action.package_update(
                         id=remote_package['id'],
                         **new_package_data
                     )
-                    set_syndicated_id(package, remote_package['id'])
+                    set_syndicated_id(package, remote_package['id'], profile)
                 else:
                     logger.info(
                         ("Creator of remote package '{0}' "
@@ -218,15 +236,25 @@ def _create_package(package):
                             remote_user['name'], author))
 
 
-def _update_package(package):
-    syndicated_id = get_pkg_dict_extra(package, get_syndicated_id())
+def _update_package(package, profile=None):
+    syndicate_org = profile.get(
+        'syndicate_organization',
+        None) if profile else get_syndicated_organization()
+    syndicate_replicate_org = profile.get(
+        'syndicate_replicate_organization',
+        False) if profile else is_organization_preserved()
+    syndicate_id = profile.get(
+        'syndicate_field_id',
+        'syndicated_id') if profile else get_syndicated_id()
+
+    syndicated_id = get_pkg_dict_extra(package, syndicate_id)
 
     if syndicated_id is None:
         logger.info("Syndicated ID is missing, heading to package create")
-        _create_package(package)
+        _create_package(package, profile)
         return
 
-    ckan = get_target()
+    ckan = get_target(profile)
 
     try:
         updated_package = dict(package)
@@ -234,16 +262,20 @@ def _update_package(package):
         del updated_package['id']
         del updated_package['name']
 
-        updated_package['extras'] = filter_extras(package['extras'])
-        updated_package['resources'] = filter_resources(package['resources'])
+        updated_package['extras'] = filter_extras(
+            package['extras'], profile)
+        updated_package['resources'] = filter_resources(
+            package['resources'])
 
         org = updated_package.pop('organization')
 
-        logger.info("Updating Organization for Dataset")
-        if is_organization_preserved():
-            org_id = replicate_remote_organization(org)
+        if syndicate_replicate_org:
+            logger.info("Replicating Organization for Dataset")
+            org_id = replicate_remote_organization(org, profile)
         else:
-            org_id = get_syndicated_organization()
+            logger.info("Syndicating into {org} Organization.".format(
+                org=syndicate_org))
+            org_id = syndicate_org
 
         updated_package['owner_org'] = org_id
 
@@ -257,14 +289,17 @@ def _update_package(package):
             **updated_package
         )
     except ckanapi.NotFound:
-        _create_package(package)
+        _create_package(package, profile)
 
 
-def set_syndicated_id(local_package, remote_package_id):
+def set_syndicated_id(local_package, remote_package_id, profile=None):
     """ Set the remote package id on the local package """
+    syndicate_id = profile.get(
+        'syndicate_field_id',
+        'syndicated_id') if profile else get_syndicated_id()
     extras = local_package['extras']
     extras_dict = dict([(o['key'], o['value']) for o in extras])
-    extras_dict.update({get_syndicated_id(): remote_package_id})
+    extras_dict.update({syndicate_id: remote_package_id})
     extras = [{'key': k, 'value': v} for (k, v) in extras_dict.iteritems()]
     local_package['extras'] = extras
     _update_package_extras(local_package)

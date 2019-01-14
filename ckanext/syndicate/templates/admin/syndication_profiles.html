@@ -1,0 +1,28 @@
+{% extends "admin/base.html" %}
+{% import 'macros/form.html' as form %}
+
+{% block primary %}
+	<div class="syndication-primary">
+        {% block primary_content %}
+			{{ super() }}
+        {% endblock %}
+	</div>
+{% endblock %}
+
+{% block secondary %}{% endblock %}
+
+{% block primary_content_inner %}
+	    <form id="syndication-profiles" class="form-horizontal" method="post" >
+	    	<div class="syndicate-profile-items">
+	    		{% if profiles %}
+			        {% for profile in profiles %}
+			            {% snippet "admin/snippets/syndication_profile_item.html", form=form, profile=profile, index=loop.index %}
+			        {% endfor %}
+		        {% else %}
+		        	{% snippet "admin/snippets/syndication_profile_item.html", form=form, profile=[], index=1 %}
+		        {% endif %}
+	    	</div>
+	        <input type="submit" class="btn btn-primary pull-right" value="Save configuration">
+	    </form>
+	    <button data-module='syndicate-add-profile' class="btn">Add Syndicate Profile</button>
+{% endblock %}

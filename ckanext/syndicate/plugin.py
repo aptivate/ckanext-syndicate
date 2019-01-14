@@ -10,6 +10,15 @@ from ckan.model.domain_object import DomainObjectOperation
 
 import uuid
 
+from ckanext.syndicate.actions import get_actions
+from ckanext.syndicate.syndicate_model.syndicate_profiles import (
+    SyndicateProfiles
+    )
+
+SYNDICATE_CONTROLLER = (
+    'ckanext.syndicate.controllers.syndication:SyndicationController'
+    )
+
 
 def get_syndicate_flag():
     return config.get('ckan.syndicate.flag', 'syndicate')
@@ -36,11 +45,11 @@ def is_organization_preserved():
         'ckan.syndicate.replicate_organization', False))
 
 
-def syndicate_dataset(package_id, topic):
+def syndicate_dataset(package_id, topic, syndicate_profile=None):
     ckan_ini_filepath = os.path.abspath(config['__file__'])
     celery.send_task(
         'syndicate.sync_package',
-        args=[package_id, topic, ckan_ini_filepath],
+        args=[package_id, topic, ckan_ini_filepath, syndicate_profile],
         task_id='{}-{}'.format(str(uuid.uuid4()), package_id)
     )
 
@@ -48,6 +57,13 @@ def syndicate_dataset(package_id, topic):
 class SyndicatePlugin(plugins.SingletonPlugin):
     plugins.implements(plugins.IConfigurer)
     plugins.implements(plugins.IDomainObjectModification, inherit=True)
+    plugins.implements(plugins.IRoutes, inherit=True)
+    plugins.implements(plugins.IActions)
+
+    # IActions
+
+    def get_actions(self):
+        return get_actions()
 
     # IConfigurer
 
@@ -68,14 +84,39 @@ class SyndicatePlugin(plugins.SingletonPlugin):
 
     def _syndicate_dataset(self, dataset, operation):
         topic = self._get_topic('dataset', operation)
+        if topic is None:
+            return
 
-        if topic is not None and self._syndicate(dataset):
-            syndicate_dataset(dataset.id, topic)
+        multiple_profiles = toolkit.asbool(
+            config.get('ckan.syndicate.use_multiple_profiles', False))
 
-    def _syndicate(self, dataset):
-        return (not dataset.private and
-                toolkit.asbool(dataset.extras.get(
-                    get_syndicate_flag(), 'false')))
+        if multiple_profiles:
+            profiles = toolkit.get_action('syndicate_get_profiles')({}, {})
+            if profiles:
+                for profile in profiles:
+                    if self._syndicate(dataset, profile.syndicate_flag):
+                        pf = profile.__dict__
+                        pf = {
+                            key: pf[key] for key in pf if not key.startswith(
+                                "_")
+                        }
+                        syndicate_dataset(dataset.id, topic, pf)
+        else:
+            if self._syndicate(dataset):
+                syndicate_dataset(dataset.id, topic)
+
+    def _syndicate(self, dataset, syndicate_flag=None):
+        if syndicate_flag:
+            return (
+                not dataset.private and
+                toolkit.asbool(dataset.extras.get(syndicate_flag, 'false'))
+            )
+        else:
+            return (
+                not dataset.private and toolkit.asbool(
+                    dataset.extras.get(get_syndicate_flag(), 'false')
+                )
+            )
 
     def _get_topic(self, prefix, operation):
         topics = {
@@ -89,3 +130,14 @@ class SyndicatePlugin(plugins.SingletonPlugin):
             return '{0}/{1}'.format(prefix, topic)
 
         return None
+
+    # IRoutes
+
+    def before_map(self, map):
+        map.connect(
+            'syndication_profiles_configuration',
+            '/ckan-admin/syndication-profiles',
+            action='syndication_profiles',
+            controller=SYNDICATE_CONTROLLER,
+            ckan_icon='sitemap')
+        return map
