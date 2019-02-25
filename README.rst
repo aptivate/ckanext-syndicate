@@ -1,3 +1,29 @@
+.. image:: https://travis-ci.org/aptivate/ckanext-syndicate.svg?branch=master
+    :target: https://travis-ci.org/aptivate/ckanext-syndicate
+
+.. image:: https://coveralls.io/repos/aptivate/ckanext-syndicate/badge.svg
+  :target: https://coveralls.io/r/aptivate/ckanext-syndicate
+
+.. image:: https://pypip.in/download/ckanext-syndicate/badge.svg
+    :target: https://pypi.python.org/pypi//ckanext-syndicate/
+    :alt: Downloads
+
+.. image:: https://pypip.in/version/ckanext-syndicate/badge.svg
+    :target: https://pypi.python.org/pypi/ckanext-syndicate/
+    :alt: Latest Version
+
+.. image:: https://pypip.in/py_versions/ckanext-syndicate/badge.svg
+    :target: https://pypi.python.org/pypi/ckanext-syndicate/
+    :alt: Supported Python versions
+
+.. image:: https://pypip.in/status/ckanext-syndicate/badge.svg
+    :target: https://pypi.python.org/pypi/ckanext-syndicate/
+    :alt: Development Status
+
+.. image:: https://pypip.in/license/ckanext-syndicate/badge.svg
+    :target: https://pypi.python.org/pypi/ckanext-syndicate/
+    :alt: License
+
 =================
 ckanext-syndicate
 =================
