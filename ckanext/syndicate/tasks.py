@@ -169,9 +169,11 @@ def _create_package(package):
         pass
 
     try:
+        new_package_data['dataset_source'] = org_id
         remote_package = ckan.action.package_create(**new_package_data)
         set_syndicated_id(package, remote_package['id'])
     except toolkit.ValidationError as e:
+        logger.info("Remote create failed with: '{}'".format(str(e)))
         if 'That URL is already in use.' in e.error_dict.get('name', []):
             logger.info("package with name '{0}' already exists. Check creator.".format(
                 new_package_data['name']))
@@ -239,6 +241,7 @@ def _update_package(package):
         except KeyError:
             pass
 
+        updated_package['dataset_source'] = org_id
         ckan.action.package_update(
             id=syndicated_id,
             **updated_package
