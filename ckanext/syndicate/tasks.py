@@ -144,7 +144,7 @@ def sync_package(package_id, action, ckan_ini_filepath=None, profile=None):
     )
 
     try:
-        toolkit.get_action('before_syndication_action')({}, params)
+        toolkit.get_action('before_syndication_action')({'profile': profile}, params)
     except KeyError:
         pass
     if action == 'dataset/create':
@@ -154,7 +154,7 @@ def sync_package(package_id, action, ckan_ini_filepath=None, profile=None):
     else:
         raise Exception('Unsupported action {0}'.format(action))
     try:
-        toolkit.get_action('after_syndication_action')({}, params)
+        toolkit.get_action('after_syndication_action')({'profile': profile}, params)
     except KeyError:
         pass
 
