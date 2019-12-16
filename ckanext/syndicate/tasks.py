@@ -259,6 +259,7 @@ def _create_package(package, profile=None):
         pass
 
     try:
+        new_package_data['dataset_source'] = org_id
         remote_package = ckan.action.package_create(**new_package_data)
         set_syndicated_id(
             package, remote_package['id'], profile['syndicate_field_id']
@@ -281,9 +282,11 @@ def _create_package(package, profile=None):
         )
         raise
     except toolkit.ValidationError as e:
+
         _log_errors(
             logging_id, e.error_dict, 'dataset/create', syndicate_to_url
         )
+        logger.info("Remote create failed with: '{}'".format(str(e)))
         if 'That URL is already in use.' in e.error_dict.get('name', []):
             logger.info(
                 "package with name '{0}' already exists. Check creator.".

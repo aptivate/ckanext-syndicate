@@ -4,7 +4,6 @@ import importlib
 
 import ckan.plugins as plugins
 import ckan.plugins.toolkit as toolkit
-from routes.mapper import SubMapper
 
 from pylons import config
 import ckan.model as model
