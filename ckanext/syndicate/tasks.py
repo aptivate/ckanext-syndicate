@@ -1,6 +1,9 @@
+from future import standard_library
+standard_library.install_aliases()
+from builtins import str
 from pprint import pprint
 import logging
-from urlparse import urlparse, urljoin
+from urllib.parse import urlparse, urljoin
 import ckanapi
 import os
 import routes
@@ -118,7 +121,7 @@ def get_target(target_url="", target_api=""):
 def filter_extras(extras):
     extras_dict = dict([(o["key"], o["value"]) for o in extras])
     extras_dict.pop(get_syndicate_flag(), None)
-    return [{"key": k, "value": v} for (k, v) in extras_dict.iteritems()]
+    return [{"key": k, "value": v} for (k, v) in extras_dict.items()]
 
 
 def filter_resources(resources):

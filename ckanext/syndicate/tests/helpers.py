@@ -1,3 +1,5 @@
+from future import standard_library
+standard_library.install_aliases()
 import os
 import cgi
 
@@ -7,7 +9,7 @@ import ckan.tests.helpers as helpers
 import ckan.plugins as plugins
 
 
-from StringIO import StringIO
+from io import StringIO
 
 test_file = StringIO()
 test_file.name = "test_file.txt"

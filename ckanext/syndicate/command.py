@@ -1,3 +1,4 @@
+from __future__ import print_function
 import logging
 import paste.script
 from ckan.lib.cli import CkanCommand
@@ -32,7 +33,7 @@ class SyndicateCommand(CkanCommand):
         self._load_config()
 
         if not len(self.args):
-            print self.usage
+            print(self.usage)
         elif self.args[0] == "init":
             self._init()
         elif self.args[0] == "drop":

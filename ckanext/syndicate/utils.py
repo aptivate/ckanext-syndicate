@@ -1,7 +1,9 @@
 # -*- coding: utf-8 -*-
+from __future__ import print_function
+from builtins import str
 import os
 import logging
-from itertools import izip_longest as zip_longest
+from itertools import zip_longest as zip_longest
 from time import sleep
 
 import ckan.model as ckan_model
@@ -93,7 +95,7 @@ def seed_db():
         "prefix",
     )
     profile_lists = zip_longest(
-        *map(lambda key: tk.aslist(config.get(prefix + key)), keys)
+        *[tk.aslist(config.get(prefix + key)) for key in keys]
     )
     for item in profile_lists:
         profile = SyndicateConfig._for_seed(item)
