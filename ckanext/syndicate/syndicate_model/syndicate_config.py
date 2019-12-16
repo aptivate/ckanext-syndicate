@@ -8,7 +8,7 @@ from ckanext.syndicate.syndicate_model.model import Base
 
 
 class SyndicateConfig(Base, DomainObject):
-    __tablename__ = 'syndicate_config'
+    __tablename__ = "syndicate_config"
 
     id = Column(UnicodeText, primary_key=True, default=make_uuid)
     syndicate_url = Column(UnicodeText, unique=True)

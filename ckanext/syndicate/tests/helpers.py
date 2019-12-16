@@ -10,8 +10,8 @@ import ckan.plugins as plugins
 from StringIO import StringIO
 
 test_file = StringIO()
-test_file.name = 'test_file.txt'
-test_file.write('test')
+test_file.name = "test_file.txt"
+test_file.write("test")
 
 assert_equal = nose.tools.assert_equal
 assert_false = nose.tools.assert_false
@@ -27,21 +27,23 @@ class UploadLocalFileStorage(cgi.FieldStorage):
         self.filename = fp.name
         self.file = fp
 
+
 test_upload_file = UploadLocalFileStorage(test_file)
 
 
 def fixture_path(path):
-    path = os.path.join(os.path.split(__file__)[0], 'test-data', path)
+    path = os.path.join(os.path.split(__file__)[0], "test-data", path)
     return os.path.abspath(path)
 
 
 def _get_context(context):
     from ckan import model
+
     return {
-        'model': context.get('model', model),
-        'session': context.get('session', model.Session),
-        'user': context.get('user'),
-        'ignore_auth': context.get('ignore_auth', False)
+        "model": context.get("model", model),
+        "session": context.get("session", model.Session),
+        "user": context.get("user"),
+        "ignore_auth": context.get("ignore_auth", False),
     }
 
 
@@ -49,9 +51,9 @@ class FunctionalTestBaseClass(helpers.FunctionalTestBase):
     @classmethod
     def setup_class(cls):
         super(FunctionalTestBaseClass, cls).setup_class()
-        plugins.load('syndicate')
+        plugins.load("syndicate")
 
     @classmethod
     def teardown_class(cls):
-        plugins.unload('syndicate')
+        plugins.unload("syndicate")
         super(FunctionalTestBaseClass, cls).teardown_class()

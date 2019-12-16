@@ -1,14 +1,18 @@
-try:
-    from ckan.common import config
-except ImportError:
+# -*- coding: utf-8 -*-
+
+import ckan.plugins.toolkit as tk
+
+if tk.check_ckan_version("2.9"):
+    config = tk.config
+else:
     from pylons import config
 
-CONFIG_ALLOWED_ORG = 'ckanext.syndication.predicate.allowed_organization'
-CONFIG_DENIED_ORG = 'ckanext.syndication.predicate.denied_organization'
+CONFIG_ALLOWED_ORG = "ckanext.syndication.predicate.allowed_organization"
+CONFIG_DENIED_ORG = "ckanext.syndication.predicate.denied_organization"
 
 
 def organization_owns_dataset(pkg, conf_name=CONFIG_ALLOWED_ORG):
-    orgs = pkg.get_groups('organization')
+    orgs = pkg.get_groups("organization")
     if not orgs:
         return False
     title = orgs[0].title
