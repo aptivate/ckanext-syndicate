@@ -9,10 +9,14 @@ import os
 import routes
 import ast
 import requests
-import pylons
-from pylons import config
+import six
 
 import ckan.plugins.toolkit as toolkit
+if toolkit.check_ckan_version("2.9"):
+    config = toolkit.config
+else:
+    from pylons import config
+
 from ckan.lib.helpers import get_pkg_dict_extra
 from ckanext.syndicate.plugin import (
     get_syndicate_flag,
@@ -45,7 +49,8 @@ except ImportError:
 def sync_package_task(package, action, ckan_ini_filepath, profile=None):
     log = sync_package_task.get_logger()
     load_config(ckan_ini_filepath)
-    register_translator()
+    if six.PY2:
+        register_translator()
     log.info("Sync package %s, with action %s" % (package, action))
     return sync_package(package, action, None, profile)
 
@@ -63,19 +68,17 @@ sync_package_task.get_logger = get_logger
 
 
 def load_config(ckan_ini_filepath):
-    import paste.deploy
-
-    config_abs_path = os.path.abspath(ckan_ini_filepath)
-    conf = paste.deploy.appconfig("config:" + config_abs_path)
     import ckan
+    if six.PY2:
+        ckan.config.environment.load_environment(config["global_conf"], config)
+        ## give routes enough information to run url_for
+        parsed = urlparse(conf.get("ckan.site_url", "http://0.0.0.0"))
+        request_config = routes.request_config()
+        request_config.host = parsed.netloc + parsed.path
+        request_config.protocol = parsed.scheme
 
-    ckan.config.environment.load_environment(conf.global_conf, conf.local_conf)
-
-    ## give routes enough information to run url_for
-    parsed = urlparse(conf.get("ckan.site_url", "http://0.0.0.0"))
-    request_config = routes.request_config()
-    request_config.host = parsed.netloc + parsed.path
-    request_config.protocol = parsed.scheme
+    else:
+        ckan.config.environment.load_environment(config, config)
 
 
 def register_translator():
