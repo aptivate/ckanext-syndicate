@@ -78,7 +78,7 @@ def load_config(ckan_ini_filepath):
         request_config.protocol = parsed.scheme
 
     else:
-        ckan.config.environment.load_environment(config, config)
+        ckan.config.environment.load_environment(config)
 
 
 def register_translator():
