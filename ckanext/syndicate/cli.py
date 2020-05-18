@@ -6,8 +6,11 @@ import ckanext.syndicate.utils as utils
 
 
 def get_commands():
-    return [syndicate]
+    return [syndicate, datastore]
 
+@click.command()
+def datastore():
+    print('hello')
 
 @click.group()
 def syndicate():

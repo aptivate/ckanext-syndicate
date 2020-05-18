@@ -1,33 +1,22 @@
+import pytest
 from mock import patch
 
 import ckan.model as model
 from ckan.model.domain_object import DomainObjectOperation
-from ckan.tests import factories, helpers
+from ckan.tests import factories
 
 from ckanext.syndicate.plugin import SyndicatePlugin
 
-from ckanext.syndicate.tests.helpers import assert_false
 
-
-class TestPlugin(helpers.FunctionalTestBase):
-    def setup(self):
-        super(TestPlugin, self).setup()
-        self.plugin = SyndicatePlugin()
-
-
-class TestNotify(TestPlugin):
-    def setup(self):
-        super(TestNotify, self).setup()
+@pytest.mark.usefixtures("clean_db")
+class TestDatasetNotify(object):
+    @pytest.fixture(autouse=True)
+    def init_test(self):
         dataset = factories.Dataset(
             extras=[{"key": "syndicate", "value": "true"}]
         )
-
+        self.plugin = SyndicatePlugin()
         self.dataset = model.Package.get(dataset["id"])
-
-
-class TestDatasetNotify(TestNotify):
-    def setup(self):
-        super(TestDatasetNotify, self).setup()
         self.syndicate_patch = patch(
             "ckanext.syndicate.plugin.syndicate_dataset"
         )
@@ -44,7 +33,7 @@ class TestDatasetNotify(TestNotify):
 
         with self.syndicate_patch as mock_syndicate:
             self.plugin.notify(self.dataset, DomainObjectOperation.new)
-            assert_false(mock_syndicate.called)
+            assert not (mock_syndicate.called)
 
     def test_syndicates_task_for_update(self):
         with self.syndicate_patch as mock_syndicate:
@@ -56,13 +45,15 @@ class TestDatasetNotify(TestNotify):
     def test_does_not_syndicate_for_delete(self):
         with self.syndicate_patch as mock_syndicate:
             self.plugin.notify(self.dataset, DomainObjectOperation.deleted)
-            assert_false(mock_syndicate.called)
+            assert not (mock_syndicate.called)
 
 
-class TestSyndicateFlag(TestPlugin):
-    def setup(self):
-        super(TestSyndicateFlag, self).setup()
+@pytest.mark.usefixtures("clean_db")
+class TestSyndicateFlag(object):
+    @pytest.fixture(autouse=True)
+    def init_test(self):
         dataset = factories.Dataset()
+        self.plugin = SyndicatePlugin()
         self.dataset = model.Package.get(dataset["id"])
 
     def test_syndicate_flag_with_capital_t(self):
@@ -83,11 +74,11 @@ class TestSyndicateFlag(TestPlugin):
 
         with syndicate_patch as mock_syndicate:
             self.plugin.notify(self.dataset, DomainObjectOperation.new)
-            assert_false(mock_syndicate.called)
+            assert not (mock_syndicate.called)
 
     def test_not_syndicated_when_flag_missing(self):
         syndicate_patch = patch("ckanext.syndicate.plugin.syndicate_dataset")
 
         with syndicate_patch as mock_syndicate:
             self.plugin.notify(self.dataset, DomainObjectOperation.new)
-            assert_false(mock_syndicate.called)
+            assert not (mock_syndicate.called)

@@ -1,9 +1,8 @@
 # -*- coding: utf-8 -*-
 from __future__ import print_function
-from builtins import str
 import os
 import logging
-from itertools import zip_longest as zip_longest
+
 from time import sleep
 
 import ckan.model as ckan_model
@@ -12,6 +11,10 @@ from ckan.plugins import get_plugin
 
 import ckanext.syndicate.syndicate_model.model as model
 from ckanext.syndicate.syndicate_model.syndicate_config import SyndicateConfig
+try:
+    from itertools import zip_longest
+except ImportError:
+    from itertools import izip_longest as zip_longest
 
 if tk.check_ckan_version("2.9"):
     config = tk.config

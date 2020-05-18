@@ -1,21 +1,13 @@
-from future import standard_library
-standard_library.install_aliases()
-from builtins import str
-from pprint import pprint
 import logging
-from urllib.parse import urlparse, urljoin
+from six.moves.urllib.parse import urlparse, urljoin
+
 import ckanapi
-import os
 import routes
 import ast
 import requests
 import six
 
-import ckan.plugins.toolkit as toolkit
-if toolkit.check_ckan_version("2.9"):
-    config = toolkit.config
-else:
-    from pylons import config
+import ckantoolkit as toolkit
 
 from ckan.lib.helpers import get_pkg_dict_extra
 from ckanext.syndicate.plugin import (
@@ -26,8 +18,6 @@ from ckanext.syndicate.plugin import (
     get_syndicated_author,
     is_organization_preserved,
 )
-from ckanext.syndicate.plugin import _get_syndicate_profiles
-from ckanext.syndicate.syndicate_model.syndicate_config import SyndicateConfig
 from ckan import model
 from ckan.model.task_status import TaskStatus
 from datetime import datetime
@@ -44,6 +34,8 @@ try:
 
 except ImportError:
     pass
+
+config = toolkit.config
 
 
 def sync_package_task(package, action, ckan_ini_filepath, profile=None):
@@ -186,19 +178,18 @@ def replicate_remote_organization(org):
         raise
 
     if not remote_org:
-        default_img_url = urljoin(
-            ckan.address, "/base/images/placeholder-organization.png"
-        )
-        image_url = org.get("image_display_url", default_img_url)
-        image_fd = requests.get(image_url, stream=True, timeout=2).raw
         org.pop("id")
         org.pop("image_url", None)
-        org.pop("image_display_url", None)
         org.pop("num_followers", None)
         org.pop("tags", None)
         org.pop("users", None)
         org.pop("groups", None)
 
+        default_img_url = urljoin(
+            ckan.address, "/base/images/placeholder-organization.png"
+        )
+        image_url = org.pop("image_display_url", default_img_url)
+        image_fd = requests.get(image_url, stream=True, timeout=2).raw
         org.update(image_upload=image_fd)
 
         remote_org = ckan.action.organization_create(**org)
@@ -275,27 +266,7 @@ def _create_package(package, profile=None):
             remote_package["id"],
             profile["syndicate_field_id"] if profile else "",
         )
-        _remove_from_log(logging_id, syndicate_to_url)
-    except ckanapi.CKANAPIError as e:
-        try:
-            addr, status_code, message = ast.literal_eval(e.extra_msg)
-            error = {
-                "endpoint": addr,
-                "status_code": status_code,
-                "message": message,
-            }
-        except (ValueError, SyntaxError):
-            error = e.extra_msg
-
-        _log_errors(
-            logging_id, {"error": error}, "dataset/create", syndicate_to_url
-        )
-        raise
     except toolkit.ValidationError as e:
-
-        _log_errors(
-            logging_id, e.error_dict, "dataset/create", syndicate_to_url
-        )
         log.info("Remote create failed with: '{}'".format(str(e)))
         if "That URL is already in use." in e.error_dict.get("name", []):
             log.info(
@@ -319,21 +290,9 @@ def _create_package(package, profile=None):
                 remote_user = ckan.action.user_show(id=author)
             except toolkit.ValidationError as e:
                 log.error(e.errors)
-                _log_errors(
-                    logging_id,
-                    e.error_dict,
-                    "dataset/create",
-                    syndicate_to_url,
-                )
                 raise
-            except toolkit.ObjectNotFound as e:
+            except toolkit.ObjectNotFound:
                 log.error('User "{0}" not found'.format(author))
-                _log_errors(
-                    logging_id,
-                    {"error": "User not found"},
-                    "dataset/create",
-                    syndicate_to_url,
-                )
                 raise
             else:
                 if remote_package["creator_user_id"] == remote_user["id"]:
@@ -349,7 +308,6 @@ def _create_package(package, profile=None):
                         remote_package["id"],
                         profile["syndicate_field_id"] if profile else "",
                     )
-                    _remove_from_log(logging_id, syndicate_to_url)
                 else:
                     log.info(
                         "Creator of remote package '{0}' did not match '{1}'. Skipping".format(
@@ -444,7 +402,7 @@ def _update_package(package, profile=None):
 
         try:
             ckan.action.package_update(id=syndicated_id, **updated_package)
-            _remove_from_log(logging_id, syndicate_to_url)
+
         except toolkit.ValidationError as e:
             # Extra check for new CKAN dataset deletion logic added at CKAN 2.7 and higher
             if "That URL is already in use." in e.error_dict.get("name", []):
@@ -471,21 +429,9 @@ def _update_package(package, profile=None):
                         remote_user = ckan.action.user_show(id=author)
                     except toolkit.ValidationError as e:
                         log.error(e.errors)
-                        _log_errors(
-                            logging_id,
-                            e.error_dict,
-                            "dataset/create",
-                            syndicate_to_url,
-                        )
                         raise
-                    except toolkit.ObjectNotFound as e:
+                    except toolkit.ObjectNotFound:
                         log.error('User "{0}" not found'.format(author))
-                        _log_errors(
-                            logging_id,
-                            {"error": "User not found"},
-                            "dataset/create",
-                            syndicate_to_url,
-                        )
                         raise
                     else:
                         if (
@@ -508,27 +454,15 @@ def _update_package(package, profile=None):
                                 if profile
                                 else "",
                             )
-                            _remove_from_log(logging_id, syndicate_to_url)
+
                         else:
                             log.info(
                                 "Creator of remote package '{0}' did not match '{1}'. Skipping".format(
                                     remote_user["name"], author
                                 )
                             )
-            else:
-                _log_errors(
-                    logging_id,
-                    e.error_dict,
-                    "dataset/update",
-                    syndicate_to_url,
-                )
         except requests.ConnectionError as e:
-            _log_errors(
-                logging_id,
-                {"error": {"message": e.message[0]}},
-                "dataset/update",
-                syndicate_to_url,
-            )
+            log.error('Package update error', exc_info=e)
     except ckanapi.NotFound:
         _create_package(package, profile)
 
@@ -604,50 +538,3 @@ def _update_search_index(package_id, log):
     package = toolkit.get_action("package_show")(context_, {"id": package_id})
     package_index.index_package(package, defer_commit=False)
     log.info("Search indexed %s", package["name"])
-
-
-def _log_errors(pkg_id, e, action, profile_url):
-    """
-    Tell CKAN to log any error during the syndication.
-
-    Logs are saved into the task_status table.
-    """
-    log.warn(e)
-
-    task_dict = {
-        "entity_type": "dataset",
-        "task_type": "syndicate",
-        "value": False,
-        "state": action,
-        "error": json.dumps(e, indent=2),
-    }
-
-    try:
-        query = (
-            model.Session.query(TaskStatus)
-            .filter(
-                TaskStatus.entity_id == pkg_id, TaskStatus.key == profile_url
-            )
-            .one()
-        )
-
-        query.error = task_dict["error"]
-        query.state = task_dict["state"]
-        query.last_updated = datetime.now()
-    except NoResultFound:
-        task_dict["entity_id"] = pkg_id
-        task_dict["key"] = profile_url
-
-        task_status = TaskStatus(**task_dict)
-
-        model.Session.add(task_status)
-    model.Session.commit()
-    model.Session.close()
-
-
-def _remove_from_log(pkg_id, url):
-    """Tell CKAN to remove the log from task_status table."""
-    model.Session.query(model.TaskStatus).filter(
-        model.TaskStatus.entity_id == pkg_id, model.TaskStatus.key == url
-    ).delete()
-    model.Session.commit()

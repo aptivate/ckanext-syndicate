@@ -90,6 +90,8 @@ setup(
 
         [ckan.celery_task]
         tasks=ckanext.syndicate.celery_import:task_imports
+    [ckan.click_command]
+    syndicate=ckanext.syndicate.cli:syndicate
     ''',
 
     # If you are changing from the default layout of your extension, you may
