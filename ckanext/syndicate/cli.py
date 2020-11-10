@@ -29,3 +29,11 @@ def sync(id):
     """Syndicate datasets to remote portals.
     """
     utils.sync_portals(id)
+
+
+@syndicate.command()
+def init():
+    """Creates new syndication table.
+    """
+    utils.reset_db()
+    log.info("DB tables are reinitialized")
