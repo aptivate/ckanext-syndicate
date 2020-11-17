@@ -36,4 +36,4 @@ def init():
     """Creates new syndication table.
     """
     utils.reset_db()
-    log.info("DB tables are reinitialized")
+    click.secho("DB tables are reinitialized", fg='green')
