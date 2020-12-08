@@ -64,7 +64,7 @@ def load_config(ckan_ini_filepath):
     if six.PY2:
         ckan.config.environment.load_environment(config["global_conf"], config)
         ## give routes enough information to run url_for
-        parsed = urlparse(conf.get("ckan.site_url", "http://0.0.0.0"))
+        parsed = urlparse(toolkit.config.get("ckan.site_url", "http://0.0.0.0"))
         request_config = routes.request_config()
         request_config.host = parsed.netloc + parsed.path
         request_config.protocol = parsed.scheme
@@ -78,6 +78,7 @@ def register_translator():
     # If not set (in cli access), patch the a translator with a mock, so the
     # _() functions in logic layer don't cause failure.
     from paste.registry import Registry
+    import pylons
     from pylons import translator, tmpl_context
     from ckan.lib.cli import MockTranslator
 

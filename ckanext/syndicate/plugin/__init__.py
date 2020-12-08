@@ -159,7 +159,6 @@ class SyndicatePlugin(MixinPlugin, plugins.SingletonPlugin):
                         exc_info=True,
                     )
                     endpoints = []
-
                 if endpoints and profile["syndicate_url"] not in endpoints:
                     log.debug(
                         "Skip endpoint {} for <{}>".format(
