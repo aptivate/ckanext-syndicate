@@ -107,7 +107,7 @@ def seed_db():
     ckan_model.Session.commit()
 
 
-def sync_portals(pkg=None):
+def sync_portals(pkg=None, timeout=0.1):
     plugin = get_plugin("syndicate")
     from ckanext.syndicate.plugin import get_syndicate_flag
 
@@ -120,7 +120,7 @@ def sync_portals(pkg=None):
         )
 
     for package in packages:
-        sleep(0.1)
+        sleep(timeout)
         package.extras[get_syndicate_flag()] = "true"
         print("Sending syndication signal to {}".format(package.id))
         plugin.notify(package, "changed")

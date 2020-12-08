@@ -29,6 +29,14 @@ class SyndicateCommand(CkanCommand):
         help="Config file to use.",
     )
 
+    parser.add_option(
+        "-t",
+        "--timeout",
+        default=0.1,
+        type=float,
+        help="Timeout between job equeues",
+    )
+
     def command(self):
         self._load_config()
 
@@ -62,4 +70,4 @@ class SyndicateCommand(CkanCommand):
         pkg = None
         if len(self.args) > 1:
             pkg = self.args[1]
-        utils.sync_portals(pkg)
+        utils.sync_portals(pkg, self.options.timeout)
