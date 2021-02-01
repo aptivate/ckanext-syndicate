@@ -179,11 +179,6 @@ def replicate_remote_organization(org):
         raise
 
     if not remote_org:
-        # Fix for Organization to return full data with additional fields
-        # that are not returned with usual 'package_show'
-        org = toolkit.get_action("organization_show")(
-            {"ignore_auth": True}, {'id': org["name"]}
-        )
         org.pop("id")
         org.pop("image_url", None)
         org.pop("num_followers", None)
