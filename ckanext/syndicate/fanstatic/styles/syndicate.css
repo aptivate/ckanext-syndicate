@@ -1,0 +1,17 @@
+.syndicate-profile-item {
+    position: relative;
+    margin-bottom: 10px;
+}
+
+.syndicate-profile-item input[type="text"] {
+    width: 250px;
+}
+
+.syndicate-profile-item > .syndicate-profile-item-remove {
+    float: right;
+}
+
+.syndicate-profile-input {
+    display: inline-block;
+    vertical-align: top;
+}

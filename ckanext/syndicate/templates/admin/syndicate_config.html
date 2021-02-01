@@ -1,0 +1,33 @@
+{% extends "admin/base.html" %}
+{% block content_primary_nav %}
+  {{ h.build_nav_icon('syndicate_sysadmin_ui', _('Syndicate configuration profiles')) }}
+  {{ h.build_nav_icon('syndicate_global_logs', _('Syndicate global logs')) }}
+{% endblock %}
+{% block primary_content_inner %}
+    <div class="content">
+        <form id="syndicate_config_form" method="POST">
+            <div class="syndicate-config-items">
+                {% if count_profiles == 0 %}
+                    {% snippet "admin/snippets/syndicate_config_fields.html", profile=false %}
+                {% else %}
+                    {% for profile in syndicate_profiles %}
+                        {% snippet "admin/snippets/syndicate_config_fields.html", profile=profile %}
+                    {% endfor %}
+                {% endif %}
+            </div>
+            <div id="syndicate_remove_profiles"></div>
+            <button data-module='syndicate-profiles-add' class="btn">Add another syndicate profile</button>
+            <input type="submit" class="btn btn-primary" value="Save configuration">
+        </form>
+    </div>
+{% endblock %}
+
+{% block secondary_content %}
+    <h2 class="module-heading">
+        <i class="icon-info-sign"></i>
+        {{_("Syndicate configuration")}}
+    </h2>
+    <div class="module-content">
+        <p>Provides an ability to set multiple ckan portals profiles for multiple syndication.</p>
+    </div>
+{% endblock %}

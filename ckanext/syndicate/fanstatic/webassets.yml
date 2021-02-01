@@ -1,0 +1,13 @@
+styles:
+  output: ckanext-syndicate/%(version)s_syndicate.css
+  contents:
+    - styles/syndicate.css
+scripts:
+  filters: rjsmin
+  output: ckanext-syndicate/%(version)s_syndicate.js
+  extra:
+    preload:
+      - base/main
+  contents:
+    - scripts/syndicate-configs.js
+    - scripts/syndicate-logs.js
