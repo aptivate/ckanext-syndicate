@@ -52,6 +52,7 @@ setup(
     # https://packaging.python.org/en/latest/technical.html#install-requires-vs-requirements-files
     install_requires=[
         "ckanapi",
+        "ckantoolkit",
     ],
     # If there are data files included in your packages that need to be
     # installed, specify them here.  If using Python 2.6 or less, then these
@@ -69,7 +70,6 @@ setup(
     entry_points="""
         [ckan.plugins]
         syndicate=ckanext.syndicate.plugin:SyndicatePlugin
-        syndicate_individual=ckanext.syndicate.plugin:SyndicateDatasetPlugin
 
         [paste.paster_command]
         syndicate=ckanext.syndicate.command:SyndicateCommand

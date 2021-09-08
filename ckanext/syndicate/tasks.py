@@ -41,8 +41,6 @@ config = toolkit.config
 def sync_package_task(package, action, ckan_ini_filepath, profile=None):
     log = sync_package_task.get_logger()
     load_config(ckan_ini_filepath)
-    if six.PY2:
-        register_translator()
     log.info("Sync package %s, with action %s" % (package, action))
     return sync_package(package, action, None, profile)
 
@@ -62,40 +60,7 @@ sync_package_task.get_logger = get_logger
 def load_config(ckan_ini_filepath):
     import ckan
 
-    if six.PY2:
-        ckan.config.environment.load_environment(config["global_conf"], config)
-        ## give routes enough information to run url_for
-        parsed = urlparse(
-            toolkit.config.get("ckan.site_url", "http://0.0.0.0")
-        )
-        request_config = routes.request_config()
-        request_config.host = parsed.netloc + parsed.path
-        request_config.protocol = parsed.scheme
-
-    else:
-        ckan.config.environment.load_environment(config)
-
-
-def register_translator():
-    # https://github.com/ckan/ckanext-archiver/blob/master/ckanext/archiver/bin/common.py
-    # If not set (in cli access), patch the a translator with a mock, so the
-    # _() functions in logic layer don't cause failure.
-    from paste.registry import Registry
-    import pylons
-    from pylons import translator, tmpl_context
-    from ckan.lib.cli import MockTranslator
-
-    if "registery" not in globals():
-        global registry
-        registry = Registry()
-        registry.prepare()
-
-    if "translator_obj" not in globals():
-        global translator_obj
-        translator_obj = MockTranslator()
-        registry.register(translator, translator_obj)
-    c = pylons.util.AttribSafeContextObj()
-    registry.register(pylons.c, c)
+    ckan.config.environment.load_environment(config)
 
 
 def get_target(target_url="", target_api=""):

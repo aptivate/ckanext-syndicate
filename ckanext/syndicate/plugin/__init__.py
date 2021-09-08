@@ -10,13 +10,10 @@ from ckan.model.domain_object import DomainObjectOperation
 from ckanext.syndicate.syndicate_model.syndicate_config import SyndicateConfig
 import ckanext.syndicate.actions as actions
 import ckanext.syndicate.utils as utils
+import ckanext.syndicate.cli as cli
 
-if toolkit.check_ckan_version("2.9"):
-    config = toolkit.config
-    from ckanext.syndicate.plugin.flask_plugin import MixinPlugin
-else:
-    from pylons import config
-    from ckanext.syndicate.plugin.pylons_plugin import MixinPlugin
+config = toolkit.config
+
 
 syndicate_dataset = utils.syndicate_dataset
 
@@ -78,11 +75,17 @@ def _get_syndicate_profiles():
     return profiles_list
 
 
-class SyndicatePlugin(MixinPlugin, plugins.SingletonPlugin):
+class SyndicatePlugin(plugins.SingletonPlugin):
     plugins.implements(plugins.IDomainObjectModification, inherit=True)
     plugins.implements(plugins.IValidators)
     plugins.implements(plugins.ITemplateHelpers)
     plugins.implements(plugins.IActions)
+    plugins.implements(plugins.IClick)
+
+    # IClick
+
+    def get_commands(self):
+        return cli.get_commands()
 
     # IActions
 
@@ -188,53 +191,3 @@ class SyndicatePlugin(MixinPlugin, plugins.SingletonPlugin):
         topic = topics.get(operation)
         if topic:
             return "{0}/{1}".format(prefix, topic)
-
-
-class SyndicateDatasetPlugin(
-    plugins.SingletonPlugin, toolkit.DefaultDatasetForm
-):
-    plugins.implements(plugins.IDatasetForm)
-
-    # IDatasetForm
-
-    def is_fallback(self):
-        return True
-
-    def package_types(self):
-        return []
-
-    def _modify_package_schema(self, schema):
-        schema.update(
-            {
-                "syndication_endpoints": [
-                    toolkit.get_validator("ignore_missing"),
-                    toolkit.get_converter("convert_to_list_if_string"),
-                    toolkit.get_converter("convert_to_json"),
-                    toolkit.get_converter("convert_to_extras"),
-                ]
-            }
-        )
-        return schema
-
-    def create_package_schema(self):
-        schema = super(SyndicateDatasetPlugin, self).create_package_schema()
-        schema = self._modify_package_schema(schema)
-        return schema
-
-    def update_package_schema(self):
-        schema = super(SyndicateDatasetPlugin, self).update_package_schema()
-        schema = self._modify_package_schema(schema)
-        return schema
-
-    def show_package_schema(self):
-        schema = super(SyndicateDatasetPlugin, self).show_package_schema()
-        schema.update(
-            {
-                "syndication_endpoints": [
-                    toolkit.get_converter("convert_from_extras"),
-                    toolkit.get_converter("convert_from_json"),
-                    toolkit.get_validator("ignore_missing"),
-                ]
-            }
-        )
-        return schema

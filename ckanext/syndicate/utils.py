@@ -17,10 +17,7 @@ try:
 except ImportError:
     from itertools import izip_longest as zip_longest
 
-if tk.check_ckan_version("2.9"):
-    config = tk.config
-else:
-    from pylons import config
+config = tk.config
 
 
 log = logging.getLogger(__name__)
