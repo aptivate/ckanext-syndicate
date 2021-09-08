@@ -32,7 +32,7 @@ class SyndicatePlugin(plugins.SingletonPlugin):
     plugins.implements(plugins.IDomainObjectModification, inherit=True)
     plugins.implements(plugins.IActions)
     plugins.implements(plugins.IClick)
-    plugins.implements(ISyndicate)
+    plugins.implements(ISyndicate, inherit=True)
     plugins.implements(plugins.IConfigurable)
 
     # IConfigurable
@@ -67,11 +67,23 @@ class SyndicatePlugin(plugins.SingletonPlugin):
 
     # ISyndicate
 
-    def skip_syndication(self, package, syndicate_flag):
+    def skip_syndication(self, package: model.Package, profile: Profile):
+        if profile["predicate"]:
+            predicate = import_string(profile["predicate"])
+            if not predicate(package):
+                log.info(
+                    "Dataset[{}] will not syndicate because of predicate[{}] rejection".format(
+                        package.id, profile["predicate"]
+                    )
+                )
+                return True
+
         if package.private:
             return True
 
-        syndicate = tk.asbool(package.extras.get(syndicate_flag, "false"))
+        syndicate = tk.asbool(
+            package.extras.get(profile["syndicate_field_id"], "false")
+        )
         return not syndicate
 
 
@@ -83,7 +95,7 @@ def _get_topic(operation: str) -> Optional[Topic]:
         return "dataset/update"
 
 
-def _syndicate_dataset(dataset, operation):
+def _syndicate_dataset(package, operation):
     topic = _get_topic(operation)
     if topic is None:
         log.debug(
@@ -92,26 +104,20 @@ def _syndicate_dataset(dataset, operation):
         )
         return
 
+    implementations = plugins.PluginImplementations(ISyndicate)
+    skipper: ISyndicate = next(iter(implementations))
+
     for profile in utils.get_syndicate_profiles():
-        if profile["predicate"]:
-
-            predicate = import_string(profile["predicate"], silent=True)
-            if not predicate(dataset):
-                log.info(
-                    "Dataset[{}] will not syndicate becaus of predicate[{}] rejection".format(
-                        dataset.id, profile["predicate"]
-                    )
-                )
-                continue
-
-        implementations = plugins.PluginImplementations(ISyndicate)
-        if any(
-            p.skip_syndication(dataset, profile["syndicate_flag"])
-            for p in implementations
-        ):
+        if skipper.skip_syndication(package, profile):
+            log.debug(
+                "Plugin %s decided to skip syndication of %s for profile %s",
+                skipper.name,
+                package.id,
+                profile["id"],
+            )
             continue
 
         log.debug(
-            "Syndicate <{}> to {}".format(dataset.id, profile["syndicate_url"])
+            "Syndicate <{}> to {}".format(package.id, profile["syndicate_url"])
         )
-        utils.syndicate_dataset(dataset.id, topic, profile)
+        utils.syndicate_dataset(package.id, topic, profile)

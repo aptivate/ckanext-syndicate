@@ -123,7 +123,9 @@ def sync_portals(pkg=None, timeout=0.1):
         sleep(timeout)
         for profile in get_syndicate_profiles():
             package.extras[profile["syndicate_field_id"]] = "true"
-        print("Sending syndication signal to {}".format(package.id))
+        log.debug(
+            "Sending syndication signal to package {}".format(package.id)
+        )
 
         plugin.notify(package, "changed")
 
