@@ -1,3 +1,29 @@
+.. image:: https://travis-ci.org/aptivate/ckanext-syndicate.svg?branch=master
+    :target: https://travis-ci.org/aptivate/ckanext-syndicate
+
+.. image:: https://coveralls.io/repos/aptivate/ckanext-syndicate/badge.svg
+  :target: https://coveralls.io/r/aptivate/ckanext-syndicate
+
+.. image:: https://pypip.in/download/ckanext-syndicate/badge.svg
+    :target: https://pypi.python.org/pypi//ckanext-syndicate/
+    :alt: Downloads
+
+.. image:: https://pypip.in/version/ckanext-syndicate/badge.svg
+    :target: https://pypi.python.org/pypi/ckanext-syndicate/
+    :alt: Latest Version
+
+.. image:: https://pypip.in/py_versions/ckanext-syndicate/badge.svg
+    :target: https://pypi.python.org/pypi/ckanext-syndicate/
+    :alt: Supported Python versions
+
+.. image:: https://pypip.in/status/ckanext-syndicate/badge.svg
+    :target: https://pypi.python.org/pypi/ckanext-syndicate/
+    :alt: Development Status
+
+.. image:: https://pypip.in/license/ckanext-syndicate/badge.svg
+    :target: https://pypi.python.org/pypi/ckanext-syndicate/
+    :alt: License
+
 =================
 ckanext-syndicate
 =================
@@ -42,15 +68,19 @@ To install ckanext-syndicate:
    config file (by default the config file is located at
    ``/etc/ckan/default/production.ini``).
 
-4. Restart CKAN. For example if you've deployed CKAN with Apache on Ubuntu::
+4. Run paster command to init ``syndicate_config`` table
+
+    paster --plugin=ckan syndicate init -c /etc/ckan/default/development.ini
+
+5. Restart CKAN. For example if you've deployed CKAN with Apache on Ubuntu::
 
     sudo service apache2 reload
 
-5. You will also need to set up celery. In a development environment this can be done with the following paster command from within your virtual environment::
+6. You will also need to set up celery. In a development environment this can be done with the following paster command from within your virtual environment::
 
     paster --plugin=ckan celeryd run -c /etc/ckan/default/development.ini
 
-6. In a production environment, celery can be configured through supervisor, for example ``/etc/supervisor/conf.d/celery.conf``::
+7. In a production environment, celery can be configured through supervisor, for example ``/etc/supervisor/conf.d/celery.conf``::
 
     [program:celery]
     autorestart=true
@@ -65,11 +95,11 @@ To install ckanext-syndicate:
     stopwaitsecs=600
     user=www-data
 
----------------
-Config Settings
----------------
+--------------------------------------
+Config Settings for using in .ini file
+--------------------------------------
 
-::
+If you are using syndication to single endpoint::
 
     # The URL of the site to be syndicated to
     ckan.syndicate.ckan_url = https://data.humdata.org/
@@ -108,6 +138,83 @@ Config Settings
     # only if this option is set and its creator matches this user name
     # (optional, default: None)
     ckan.syndicate.author = some_user_name
+
+If you are using syndication to multiple endpoints, specify multiple
+values for each section, divided either with space or with
+newline. Only distinction is `ckan.syndicate.predicate` directive,
+which specifies predicate for check, whether dataset need to be
+syndicated for current profile. This option uses
+`import.path:function_name` format and predicate function will be
+called with syndicated package object as single argument. If function
+returns falsy value, no syndication happens::
+
+  ckan.syndicate.api_key = 4c38ad33-0d77-4213-a6da-b394f66146e7 c203782c-2c5e-410e-b47e-001818b9a674
+  ckan.syndicate.author =
+		      sergey
+		      sergey
+  ckan.syndicate.ckan_url =  http://127.0.0.1:8000
+                             http://127.0.0.1:7000
+  ckan.syndicate.replicate_organization = true false
+  ckan.syndicate.organization = default pdp
+  ckan.syndicate.predicate = __builtin__:bool ckanext.anzlic.helpers:is_pdp_dataset
+  ckan.syndicate.field_id = syndicate_seed_id syndicate_pdp_id
+
+In order to define, which organization is considered as PDP organization, use next config directive::
+
+    ckan.pdp.organization = Department of Planning and Environment
+
+If syndication endpoints were specified via UI, by default every syndicated dataset will be pushed
+to all syndication endpoints. In order to specify syndication endpoints per dataset, one can update
+dataset schema and select particular endpoints(only if they were previously added globally) at dataset
+form. Depending on usage of ckanext-scheming, there are two possible solutions:
+
+1. Without `ckanext-scheming`. Add `syndicate_individual` to list of enabled plugins. Note: You may need to
+   reinstall `ckanext-syndicate` if this results in `PluginNotFoundException`.
+
+2. With `ckanext-scheming`. Add next field to your schema::
+    {
+        "field_name": "syndication_endpoints",
+        "label": "Syndication Endpoints",
+        "display_snippet": null,
+        "form_snippet": "syndication_endpoints.html",
+        "validators": "ignore_empty convert_to_list_if_string convert_to_json",
+        "output_validators": "ignore_missing convert_from_json"
+    }
+
+--------------------------
+Config Settings in CKAN UI
+--------------------------
+
+link to admin page ``/syndicate-config`` sysadmins are only allowed.
+(.ini file config will be used if no configs are set or missing in the UI)
+
+New feature::
+    - Using Syndicate CKAN UI, you can add multiple ckan instances;
+    - UI provides syndicate logs page, that show all failed syndications. You can manually run syndication for each of these logs.
+
+---
+API
+---
+- syndicate_individual_dataset.
+  ex.: curl -X POST <CKAN_URL> -H "Authorization: <USER_API_KEY>" -d '{"id": "<DATASET_ID>", "api_key": "<REMOTE_INSTANCE_API_KEY>"}'
+  Trigger syndication for individual dataset.
+  Restrictions:
+  - User must have `package_update` access
+  - <REMOTE_INSTANCE_API_KEY> must be added as syndication endpoint to updated dataset.
+
+- syndicate_datasets_by_endpoint.
+  ex.: curl -X POST <CKAN_URL> -H "Authorization: <USER_API_KEY>" -d '{"api_key": "<REMOTE_INSTANCE_API_KEY>"}'
+  Trigger syndication for all dataset that have specified endpoing among `syndication_endpoints`.
+  Restrictions:
+  - User must have `sysadmin` access
+
+---
+CLI
+---
+
+Mass or individual syndication can be triggered as well from command line::
+
+  paster syndicate sync [ID] -c /ckan/development.ini
 
 ------------------------
 Development Installation

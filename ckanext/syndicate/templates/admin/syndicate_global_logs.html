@@ -1,0 +1,63 @@
+{% extends "admin/base.html" %}
+
+{% block content_primary_nav %}
+  {{ h.build_nav_icon('syndicate_sysadmin_ui', _('Syndicate configuration profiles')) }}
+  {{ h.build_nav_icon('syndicate_global_logs', _('Syndicate global logs')) }}
+{% endblock %}
+
+{% block primary_content_inner %}
+  <h1>{{ _('Syndication logs') }}</h1>
+
+  <table id="syndicate-logs-table" class="table table-header table-hover table-bordered">
+    <thead>
+      <tr>
+          <th>{{ _('Dataset ID') }}</th>
+          <th>{{ _('Portal') }}</th>
+          <th>{{ _('Task type') }}</th>
+          <th>{{ _('Errors') }}</th>
+          <th>{{ _('Last updated') }}</th>
+          <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for task in tasks %}
+        <tr>
+          <td class="media">
+            {{ task.entity_id }}
+          </td>
+          <td>{{ task.key }}</td>
+          <td>{{ task.task_type }}</td>
+          <td><pre>{{ task.error }}</pre></td>
+          <td>{{ task.last_updated }}</td>
+          <td>
+            <div class="btn-group pull-right">
+              <a class="btn btn-small syndicate-log-item-retry" href="#" data-module="syndicate-log-retry" data-module-pkgid="{{ task.entity_id }}" data-module-synd_url="{{ task.key }}" title="{{ _('Retry') }}">
+                {% block retry_button_text %}<i class="icon-refresh"></i>{% endblock %}
+              </a>
+              <a class="btn btn-danger btn-small syndicate-log-item-remove" href="#" data-module="syndicate-log-remove"  data-module-pkgid="{{ task.entity_id }}" data-module-synd_url="{{ task.key }}" title="{{ _('Delete') }}">
+                {% block delete_button_text %}<i class="icon-remove"></i>{% endblock %}
+              </a>
+            </div>
+          </td>
+        </tr>
+      {% endfor %}
+      {% if not tasks %}
+        <tr>
+          <td class="no-syndicate-logs" colspan="5">
+                <i>{{ _('There are no syndication errors.') }}</i>
+          </td>
+        </tr>
+      {% endif %}
+    </tbody>
+  </table>
+{% endblock %}
+
+{% block secondary_content %}
+    <h2 class="module-heading">
+        <i class="icon-info-sign"></i>
+        {{_("Syndicate global logs")}}
+    </h2>
+    <div class="module-content">
+        <p>Provides logging information about dataset syndication fails.</p>
+    </div>
+{% endblock %}

@@ -1,0 +1,8 @@
+{% ckan_extends %}
+{% set ckan_version = h.ckan_version() %}
+{% set type = 'asset' if ckan_version > '2.9' or ckan_version.startswith('2.10') else 'resource' %}
+
+{% block scripts %}
+	{{ super() }}
+    {% include 'syndicate/snippets/syndicate_' ~ type ~ '.html' %}
+{% endblock %}
