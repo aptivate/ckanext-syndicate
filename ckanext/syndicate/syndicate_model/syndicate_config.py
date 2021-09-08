@@ -1,3 +1,4 @@
+from typing import Optional
 from ckan.model.domain_object import DomainObject
 from ckan.model.types import make_uuid
 import ckan.plugins.toolkit as tk
@@ -10,16 +11,16 @@ from ckanext.syndicate.syndicate_model.model import Base
 class SyndicateConfig(Base, DomainObject):
     __tablename__ = "syndicate_config"
 
-    id = Column(UnicodeText, primary_key=True, default=make_uuid)
-    syndicate_url = Column(UnicodeText, unique=True)
-    syndicate_api_key = Column(UnicodeText)
-    syndicate_organization = Column(UnicodeText)
-    syndicate_replicate_organization = Column(Boolean)
-    syndicate_author = Column(UnicodeText)
-    predicate = Column(UnicodeText)
-    syndicate_field_id = Column(UnicodeText)
-    syndicate_flag = Column(UnicodeText)
-    syndicate_prefix = Column(UnicodeText)
+    id: str = Column(UnicodeText, primary_key=True, default=make_uuid)
+    syndicate_url: str = Column(UnicodeText, unique=True)
+    syndicate_api_key: Optional[str] = Column(UnicodeText)
+    syndicate_organization: Optional[str] = Column(UnicodeText)
+    syndicate_replicate_organization: bool = Column(Boolean)
+    syndicate_author: Optional[str] = Column(UnicodeText)
+    predicate: Optional[str] = Column(UnicodeText)
+    syndicate_field_id: Optional[str] = Column(UnicodeText)
+    syndicate_flag: Optional[str] = Column(UnicodeText)
+    syndicate_prefix: Optional[str] = Column(UnicodeText)
 
     # not added to _for_seed
 

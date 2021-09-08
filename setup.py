@@ -53,6 +53,8 @@ setup(
     install_requires=[
         "ckanapi",
         "ckantoolkit",
+        "typing_extensions",
+        "blinker",
     ],
     # If there are data files included in your packages that need to be
     # installed, specify them here.  If using Python 2.6 or less, then these
@@ -71,15 +73,8 @@ setup(
         [ckan.plugins]
         syndicate=ckanext.syndicate.plugin:SyndicatePlugin
 
-        [paste.paster_command]
-        syndicate=ckanext.syndicate.command:SyndicateCommand
 	[babel.extractors]
 	ckan = ckan.lib.extract:extract_ckan
-
-        [ckan.celery_task]
-        tasks=ckanext.syndicate.celery_import:task_imports
-    [ckan.click_command]
-    syndicate=ckanext.syndicate.cli:syndicate
     """,
     # If you are changing from the default layout of your extension, you may
     # have to change the message extractors, you can read more about babel

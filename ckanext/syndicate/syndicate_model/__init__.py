@@ -1,2 +1,1 @@
-from __future__ import absolute_import
-from . import syndicate_config
+from . import syndicate_config  # re-export

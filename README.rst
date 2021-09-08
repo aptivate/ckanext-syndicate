@@ -1,29 +1,3 @@
-.. image:: https://travis-ci.org/aptivate/ckanext-syndicate.svg?branch=master
-    :target: https://travis-ci.org/aptivate/ckanext-syndicate
-
-.. image:: https://coveralls.io/repos/aptivate/ckanext-syndicate/badge.svg
-  :target: https://coveralls.io/r/aptivate/ckanext-syndicate
-
-.. image:: https://pypip.in/download/ckanext-syndicate/badge.svg
-    :target: https://pypi.python.org/pypi//ckanext-syndicate/
-    :alt: Downloads
-
-.. image:: https://pypip.in/version/ckanext-syndicate/badge.svg
-    :target: https://pypi.python.org/pypi/ckanext-syndicate/
-    :alt: Latest Version
-
-.. image:: https://pypip.in/py_versions/ckanext-syndicate/badge.svg
-    :target: https://pypi.python.org/pypi/ckanext-syndicate/
-    :alt: Supported Python versions
-
-.. image:: https://pypip.in/status/ckanext-syndicate/badge.svg
-    :target: https://pypi.python.org/pypi/ckanext-syndicate/
-    :alt: Development Status
-
-.. image:: https://pypip.in/license/ckanext-syndicate/badge.svg
-    :target: https://pypi.python.org/pypi/ckanext-syndicate/
-    :alt: License
-
 =================
 ckanext-syndicate
 =================
@@ -45,10 +19,8 @@ value. This is useful if the schemas are different between CKAN instances.
 Requirements
 ------------
 
-* Tested with CKAN 2.5.x branch
-* Requires ``celery``
-* To work over SSL, requires ``pyOpenSSL``, ``ndg-httpsclient`` and ``pyasn1``
-* It may be useful to run Celery in a production environment through `supervisor <http://supervisord.org/>`_
+* Tested with CKAN 2.9.x branch on python v3.7+
+* To work over SSL, requires ``pyOpenSSL``
 
 ------------
 Installation
@@ -62,38 +34,14 @@ To install ckanext-syndicate:
 
 2. Install the ckanext-syndicate Python package into your virtual environment::
 
-    pip install ckanext-syndicate
+     git clone https://github.com/aptivate/ckanext-syndicate.git
+     pip install -e ckanext-syndicate
 
-3. Add ``syndicate`` to the ``ckan.plugins`` setting in your CKAN
-   config file (by default the config file is located at
-   ``/etc/ckan/default/production.ini``).
+3. Add ``syndicate`` to the ``ckan.plugins`` setting in your CKAN config file.
 
-4. Run paster command to init ``syndicate_config`` table
+4. Run CLI command to init ``syndicate_config`` table::
 
-    paster --plugin=ckan syndicate init -c /etc/ckan/default/development.ini
-
-5. Restart CKAN. For example if you've deployed CKAN with Apache on Ubuntu::
-
-    sudo service apache2 reload
-
-6. You will also need to set up celery. In a development environment this can be done with the following paster command from within your virtual environment::
-
-    paster --plugin=ckan celeryd run -c /etc/ckan/default/development.ini
-
-7. In a production environment, celery can be configured through supervisor, for example ``/etc/supervisor/conf.d/celery.conf``::
-
-    [program:celery]
-    autorestart=true
-    autostart=true
-    command=/usr/lib/ckan/default/bin/paster --plugin=ckan celeryd --config=/etc/ckan/default/production.ini
-    numprocs=1
-    priority=998
-    redirect_stderr=true
-    startsecs=10
-    stderr_logfile=/var/log/celeryd.log
-    stdout_logfile=/var/log/celeryd.log
-    stopwaitsecs=600
-    user=www-data
+     ckan db upgrade -p syndicate
 
 --------------------------------------
 Config Settings for using in .ini file
@@ -193,21 +141,7 @@ CLI
 
 Mass or individual syndication can be triggered as well from command line::
 
-  paster syndicate sync [ID] -c /ckan/development.ini
-
-------------------------
-Development Installation
-------------------------
-
-To install ckanext-syndicate for development, activate your CKAN virtualenv and
-do::
-
-    git clone https://github.com/aptivate/ckanext-syndicate.git
-    cd ckanext-syndicate
-    python setup.py develop
-    pip install -r dev-requirements.txt
-
-See also Installation
+  ckan syndicate sync [ID]
 
 
 -----------------
