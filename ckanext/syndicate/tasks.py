@@ -11,6 +11,7 @@ import requests
 import ckantoolkit as toolkit
 import ckan.plugins as plugins
 from ckan import model
+from ckan.lib.search import rebuild
 
 from . import signals
 from .types import Profile, Topic
@@ -20,7 +21,6 @@ log = logging.getLogger(__name__)
 
 
 def sync_package_task(package: str, action: Topic, profile: Profile):
-    log.info("Sync package %s, with action %s" % (package, action))
     return sync_package(package, action, profile)
 
 
@@ -40,7 +40,7 @@ def filter_resources(resources):
 
 
 def sync_package(package_id: str, action: Topic, profile: Profile):
-    log.info("sync package {0}".format(package_id))
+    log.info("Sync package %s, with action %s" % (package_id, action))
 
     # load the package at run of time task (rather than use package state at
     # time of task creation).
@@ -94,9 +94,12 @@ def replicate_remote_organization(org, profile: Profile):
 
     try:
         remote_org = ckan.action.organization_show(id=org["name"])
-    except toolkit.ObjectNotFound:
-        log.error("Organization not found, creating new Organization.")
-    except (toolkit.NotAuthorized, ckanapi.CKANAPIError) as e:
+    except ckanapi.NotFound:
+        log.error(
+            "Organization %s not found, creating new Organization.",
+            org["name"],
+        )
+    except (ckanapi.NotAuthorized, ckanapi.CKANAPIError) as e:
         log.error("Replication error(trying to continue): {}".format(e))
     except Exception as e:
         log.error("Replication error: {}".format(e))
@@ -175,7 +178,7 @@ def _sync_create(package, profile: Profile):
             remote_package["id"],
             profile["syndicate_field_id"],
         )
-    except toolkit.ValidationError as e:
+    except ckanapi.ValidationError as e:
         log.info("Remote create failed with: '{}'".format(str(e)))
         if "That URL is already in use." in e.error_dict.get("name", []):
             log.info(
@@ -193,10 +196,10 @@ def _sync_create(package, profile: Profile):
                     id=new_package_data["name"]
                 )
                 remote_user = ckan.action.user_show(id=author)
-            except toolkit.ValidationError as e:
-                log.error(e.errors)
+            except ckanapi.ValidationError as e:
+                log.error(e.error_dict)
                 raise
-            except toolkit.ObjectNotFound:
+            except ckanapi.NotFound:
                 log.error('User "{0}" not found'.format(author))
                 raise
             else:
@@ -336,8 +339,6 @@ def set_syndicated_id(local_package, remote_package_id, field_id):
         .first()
     )
     if not ext_id:
-        if not toolkit.check_ckan_version("2.9"):
-            rev = model.repo.new_revision()
         existing = model.PackageExtra(
             package_id=local_package["id"],
             key=field_id,
@@ -350,24 +351,4 @@ def set_syndicated_id(local_package, remote_package_id, field_id):
         model.Session.query(model.PackageExtra).filter_by(id=ext_id).update(
             {"value": remote_package_id, "state": "active"}
         )
-    _update_search_index(local_package["id"], log)
-
-
-def _update_search_index(package_id, log):
-    """
-    Tells CKAN to update its search index for a given package.
-    """
-    from ckan import model
-    from ckan.lib.search.index import PackageSearchIndex
-
-    package_index = PackageSearchIndex()
-    context_ = {
-        "model": model,
-        "ignore_auth": True,
-        "session": model.Session,
-        "use_cache": False,
-        "validate": False,
-    }
-    package = toolkit.get_action("package_show")(context_, {"id": package_id})
-    package_index.index_package(package, defer_commit=False)
-    log.info("Search indexed %s", package["name"])
+        rebuild(local_package["id"])

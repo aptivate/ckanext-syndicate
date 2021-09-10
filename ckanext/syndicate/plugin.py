@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 import warnings
 
-from typing import Iterable, Optional
+from typing import Optional
 
 from werkzeug.utils import import_string
 

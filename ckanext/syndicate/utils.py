@@ -90,8 +90,9 @@ def syndicate_configs_from_config(config) -> Iterable[SyndicateConfig]:
         "predicate",
         "field_id",
         "flag",
-        "prefix",
+        "name_prefix",
     )
+
     profile_lists = zip_longest(
         *[tk.aslist(config.get(prefix + key)) for key in keys]
     )
