@@ -66,7 +66,8 @@ def sync_package(package_id: str, action: Topic, profile: Profile):
         pass
     else:
         deprecated(
-            "before_syndication_action is deprecated. Use before_syndication signal instead"
+            "before_syndication_action is deprecated. Use before_syndication"
+            " signal instead"
         )
     signals.before_syndication.send(package_id, profile=profile, params=params)
 
@@ -83,12 +84,13 @@ def sync_package(package_id: str, action: Topic, profile: Profile):
         pass
     else:
         deprecated(
-            "after_syndication_action is deprecated. Use after_syndication signal instead"
+            "after_syndication_action is deprecated. Use after_syndication"
+            " signal instead"
         )
     signals.after_syndication.send(package_id, profile=profile, params=params)
 
 
-def replicate_remote_organization(org, profile: Profile):
+def replicate_remote_organization(org: dict[str, Any], profile: Profile):
     ckan = get_target(profile["syndicate_url"], profile["syndicate_api_key"])
     remote_org = None
 
@@ -125,7 +127,7 @@ def replicate_remote_organization(org, profile: Profile):
     return remote_org["id"]
 
 
-def _sync_create(package, profile: Profile):
+def _sync_create(package: dict[str, Any], profile: Profile):
     ckan = get_target(profile["syndicate_url"], profile["syndicate_api_key"])
 
     # Create a new package based on the local instance
@@ -154,22 +156,7 @@ def _sync_create(package, profile: Profile):
         org_id = profile["syndicate_organization"]
     new_package_data["owner_org"] = org_id
 
-    try:
-        # TODO: No automated test
-        new_package_data = toolkit.get_action(
-            "update_dataset_for_syndication"
-        )({}, {"dataset_dict": new_package_data, "package_id": package["id"]})
-    except KeyError as e:
-        pass
-    else:
-        deprecated(
-            "update_dataset_for_syndication is deprecated. Implement ISyndicate instead"
-        )
-    for plugin in plugins.PluginImplementations(ISyndicate):
-        new_package_data = plugin.prepare_package_for_syndication(
-            package["id"], new_package_data, profile
-        )
-
+    new_package_data = _prepare(package["id"], new_package_data, profile)
     try:
         new_package_data["dataset_source"] = org_id
         remote_package = ckan.action.package_create(**new_package_data)
@@ -179,72 +166,30 @@ def _sync_create(package, profile: Profile):
             profile["syndicate_field_id"],
         )
     except ckanapi.ValidationError as e:
-        log.info("Remote create failed with: '{}'".format(str(e)))
         if "That URL is already in use." in e.error_dict.get("name", []):
-            log.info(
-                "package with name '{0}' already exists. Check creator.".format(
-                    new_package_data["name"]
-                )
-            )
-
-            # Take syndicated author from the profile or use global config author
-            author = profile["syndicate_author"]
-            if not author:
-                raise
-            try:
-                remote_package = ckan.action.package_show(
-                    id=new_package_data["name"]
-                )
-                remote_user = ckan.action.user_show(id=author)
-            except ckanapi.ValidationError as e:
-                log.error(e.error_dict)
-                raise
-            except ckanapi.NotFound:
-                log.error('User "{0}" not found'.format(author))
-                raise
-            else:
-                if remote_package["creator_user_id"] == remote_user["id"]:
-                    log.info(
-                        "Author is the same({0}). Updating".format(author)
-                    )
-
-                    ckan.action.package_update(
-                        id=remote_package["id"], **new_package_data
-                    )
-                    set_syndicated_id(
-                        package,
-                        remote_package["id"],
-                        profile["syndicate_field_id"],
-                    )
-                else:
-                    log.info(
-                        "Creator of remote package '{0}' did not match '{1}'. Skipping".format(
-                            remote_user["name"], author
-                        )
-                    )
+            _reattach_own_package(new_package_data, profile, ckan)
+        else:
+            raise
 
 
-def _sync_update(package, profile: Profile):
+def _sync_update(package: dict[str, Any], profile: Profile):
     ckan = get_target(profile["syndicate_url"], profile["syndicate_api_key"])
 
     syndicated_id: Optional[str] = toolkit.h.get_pkg_dict_extra(
         package, profile["syndicate_field_id"]
     )
-
-    if syndicated_id:
-        try:
-            ckan.action.package_show(id=syndicated_id)
-        except ckanapi.NotFound:
-            syndicated_id = None
-
     if not syndicated_id:
+        return _sync_create(package, profile)
+    try:
+        remote_package = ckan.action.package_show(id=syndicated_id)
+    except ckanapi.NotFound:
         return _sync_create(package, profile)
 
     # TODO: maybe we should do deepcopy
     updated_package = dict(package)
     # Keep the existing remote ID and Name
-    del updated_package["id"]
-    del updated_package["name"]
+    updated_package["id"] = remote_package["id"]
+    updated_package["name"] = remote_package["name"]
 
     updated_package["extras"] = filter_extras(package["extras"], profile)
     updated_package["resources"] = filter_resources(package["resources"])
@@ -259,75 +204,84 @@ def _sync_update(package, profile: Profile):
 
     updated_package["owner_org"] = org_id
 
+    updated_package = _prepare(package["id"], updated_package, profile)
+
     try:
-        updated_package = toolkit.get_action("update_dataset_for_syndication")(
+        ckan.action.package_update(**updated_package)
+    except ckanapi.ValidationError as e:
+        if "That URL is already in use." in e.error_dict.get("name", []):
+            _reattach_own_package(updated_package, profile, ckan)
+        else:
+            raise
+    except requests.ConnectionError as e:
+        log.error("Package update error", exc_info=e)
+
+
+def _prepare(
+    local_id: str, package: dict[str, Any], profile: Profile
+) -> dict[str, Any]:
+    try:
+        package = toolkit.get_action("update_dataset_for_syndication")(
             {},
-            {"dataset_dict": updated_package, "package_id": package["id"]},
+            {"dataset_dict": package, "package_id": local_id},
         )
     except KeyError as e:
         pass
     else:
         deprecated(
-            "update_dataset_for_syndication is deprecated. Implement ISyndicate instead"
+            "update_dataset_for_syndication is deprecated. Implement"
+            " ISyndicate instead"
         )
     for plugin in plugins.PluginImplementations(ISyndicate):
-        updated_package = plugin.prepare_package_for_syndication(
-            package["id"], updated_package, profile
+        package = plugin.prepare_package_for_syndication(
+            local_id, package, profile
         )
 
+    return package
+
+
+def _reattach_own_package(
+    package: dict[str, Any], profile: Profile, ckan: ckanapi.RemoteCKAN
+):
+
+    log.warning(
+        "There is a package with the same name on remote portal: %s.",
+        package["name"],
+    )
+    author = profile["syndicate_author"]
+    if not author:
+        raise
     try:
-        ckan.action.package_update(id=syndicated_id, **updated_package)
+        remote_package = ckan.action.package_show(id=package["name"])
+    except ckanapi.NotFound:
+        log.error("Current user does not have access to read remote package")
+        return False
 
-    except ckanapi.ValidationError as e:
-        # Extra check for new CKAN dataset deletion logic added at CKAN 2.7 and higher
-        if "That URL is already in use." in e.error_dict.get("name", []):
-            log.info("Syndicated_id exist.")
-            # Take syndicated author from the profile or use global config author
-            log.info(
-                "package with name '{0}' already exists. Check creator.".format(
-                    updated_package["name"]
-                )
-            )
-            author = profile["syndicate_author"]
-            if not author:
-                raise
-            try:
-                remote_package = ckan.action.package_show(
-                    id=updated_package["name"]
-                )
-                remote_user = ckan.action.user_show(id=author)
-            except ckanapi.ValidationError as e:
-                log.error(e.error_dict)
-                raise
-            except ckanapi.NotFound:
-                log.error('User "{0}" not found'.format(author))
-                raise
-            else:
-                if remote_package["creator_user_id"] == remote_user["id"]:
-                    log.info(
-                        "Author is the same({0}). Updating".format(author)
-                    )
+    try:
+        remote_user = ckan.action.user_show(id=author)
+    except ckanapi.NotFound:
+        log.error('User "{0}" not found on remote portal'.format(author))
+        return False
 
-                    ckan.action.package_update(
-                        id=remote_package["id"], **updated_package
-                    )
-                    set_syndicated_id(
-                        package,
-                        remote_package["id"],
-                        profile["syndicate_field_id"],
-                    )
+    if remote_package["creator_user_id"] != remote_user["id"]:
+        log.error(
+            "Creator of remote package '{0}' did not match '{1}'. Skipping"
+            .format(remote_user["name"], author)
+        )
 
-                else:
-                    log.info(
-                        "Creator of remote package '{0}' did not match '{1}'. Skipping".format(
-                            remote_user["name"], author
-                        )
-                    )
-    except requests.ConnectionError as e:
-        log.error("Package update error", exc_info=e)
+    log.info("Author is the same({0}). Updating".format(author))
+
+    ckan.action.package_update(id=remote_package["id"], **package)
+    set_syndicated_id(
+        package,
+        remote_package["id"],
+        profile["syndicate_field_id"],
+    )
 
 
-def set_syndicated_id(local_package, remote_package_id, field_id):
+def set_syndicated_id(
+    local_package: dict[str, Any], remote_package_id: str, field_id: str
+):
     """Set the remote package id on the local package"""
     ext_id = (
         model.Session.query(model.PackageExtra.id)

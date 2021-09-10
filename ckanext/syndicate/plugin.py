@@ -72,9 +72,8 @@ class SyndicatePlugin(plugins.SingletonPlugin):
             predicate = import_string(profile["predicate"])
             if not predicate(package):
                 log.info(
-                    "Dataset[{}] will not syndicate because of predicate[{}] rejection".format(
-                        package.id, profile["predicate"]
-                    )
+                    "Dataset[{}] will not syndicate because of predicate[{}]"
+                    " rejection".format(package.id, profile["predicate"])
                 )
                 return True
 
