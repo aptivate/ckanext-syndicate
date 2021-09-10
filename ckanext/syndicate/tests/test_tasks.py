@@ -5,32 +5,40 @@ import pytest
 import mock
 
 import ckanapi
-import ckan.plugins.toolkit as tk
 import ckan.tests.helpers as helpers
 import ckan.tests.factories as factories
 from ckan.lib.helpers import get_pkg_dict_extra
-from ckan.model import Session, TaskStatus
 
-from ckanext.syndicate.plugin import get_syndicated_id
+from ckanext.syndicate.utils import get_syndicate_profiles
 
-from ckanext.syndicate.tests.helpers import (
-    test_upload_file,
-    _get_context,
-)
+
+def _get_context(context):
+    from ckan import model
+
+    return {
+        "model": context.get("model", model),
+        "session": context.get("session", model.Session),
+        "user": context.get("user"),
+        "ignore_auth": context.get("ignore_auth", False),
+    }
+
 
 from ckanext.syndicate import tasks
 from ckanext.syndicate.tasks import sync_package
 
-patch = mock.patch
+
+@pytest.fixture
+def ckan(user, app, monkeypatch):
+    ckan = ckanapi.TestAppCKAN(app, user["apikey"])
+    monkeypatch.setattr(tasks, "get_target", lambda *args: ckan)
+    yield ckan
 
 
 @pytest.mark.usefixtures("clean_db")
 class TestSyncTask(object):
     @pytest.mark.ckan_config("ckan.syndicate.name_prefix", "test")
     @pytest.mark.ckan_config("ckan.syndicate.organization", "remote-org")
-    def test_create_package(self, app, monkeypatch):
-        user = factories.User()
-
+    def test_create_package(self, ckan, user, create_with_upload):
         local_org = factories.Organization(
             users=[{"capacity": "editor", "name": user["id"]}],
             name="local-org",
@@ -50,28 +58,15 @@ class TestSyncTask(object):
             name="syndicated_dataset",
             owner_org=local_org["id"],
             extras=[{"key": "syndicate", "value": "true"}],
-            resources=[
-                {
-                    "upload": test_upload_file,
-                    "url": "test_file.txt",
-                    "url_type": "upload",
-                    "format": "txt",
-                    "name": "test_file.txt",
-                },
-                {
-                    "upload": test_upload_file,
-                    "url": "test_file1.txt",
-                    "url_type": "upload",
-                    "format": "txt",
-                    "name": "test_file1.txt",
-                },
-            ],
         )
+        create_with_upload("test", "test_file.txt", package_id=dataset["id"])
+        create_with_upload("test", "test_file1.txt", package_id=dataset["id"])
+
         assert dataset["name"] == "syndicated_dataset"
 
-        ckan = ckanapi.TestAppCKAN(app, user["apikey"])
-        monkeypatch.setattr(tasks, "get_target", lambda *args: ckan)
-        sync_package(dataset["id"], "dataset/create")
+        sync_package(
+            dataset["id"], "dataset/create", next(get_syndicate_profiles())
+        )
 
         # Reload our local package, to read the syndicated ID
         source = helpers.call_action(
@@ -110,8 +105,7 @@ class TestSyncTask(object):
         assert local_resource_url == remote_resource_url
 
     @pytest.mark.ckan_config("ckan.syndicate.organization", "remote-org")
-    def test_update_package(self, app, monkeypatch):
-        user = factories.User()
+    def test_update_package(self, user, ckan, create_with_upload):
         context = {
             "user": user["name"],
         }
@@ -138,23 +132,16 @@ class TestSyncTask(object):
                 {"key": "syndicate", "value": "true"},
                 {"key": "syndicated_id", "value": syndicated_id},
             ],
-            resources=[
-                {
-                    "upload": test_upload_file,
-                    "url": "test_file.txt",
-                    "url_type": "upload",
-                    "format": "txt",
-                    "name": "test_file.txt",
-                },
-            ],
+        )
+        local_resource = create_with_upload(
+            "test", "test_file.txt", package_id=dataset["id"]
         )
 
         assert 2 == len(helpers.call_action("package_list"))
 
-        ckan = ckanapi.TestAppCKAN(app, user["apikey"])
-        monkeypatch.setattr(tasks, "get_target", lambda *args: ckan)
-
-        sync_package(dataset["id"], "dataset/update")
+        sync_package(
+            dataset["id"], "dataset/update", next(get_syndicate_profiles())
+        )
 
         # Expect the remote package to be updated
         syndicated = helpers.call_action(
@@ -172,11 +159,10 @@ class TestSyncTask(object):
         resources = syndicated["resources"]
         assert len(resources) == 1
         remote_resource_url = resources[0]["url"]
-        local_resource_url = dataset["resources"][0]["url"]
+        local_resource_url = local_resource["url"]
         assert local_resource_url == remote_resource_url
 
-    def test_syndicate_existing_package(self, monkeypatch, app):
-        user = factories.User()
+    def test_syndicate_existing_package(self, user, ckan):
         context = {
             "user": user["name"],
         }
@@ -199,10 +185,9 @@ class TestSyncTask(object):
             "package_update", context=_get_context(context), **existing
         )
 
-        ckan = ckanapi.TestAppCKAN(app, user["apikey"])
-        monkeypatch.setattr(tasks, "get_target", lambda *args: ckan)
-
-        sync_package(existing["id"], "dataset/update")
+        sync_package(
+            existing["id"], "dataset/update", next(get_syndicate_profiles())
+        )
 
         updated = helpers.call_action(
             "package_show",
@@ -223,9 +208,8 @@ class TestSyncTask(object):
         assert syndicated["notes"] == updated["notes"]
 
     def test_syndicate_existing_package_with_stale_syndicated_id(
-        self, app, monkeypatch
+        self, user, ckan
     ):
-        user = factories.User()
         context = {
             "user": user["name"],
         }
@@ -247,10 +231,9 @@ class TestSyncTask(object):
             ],
         )
 
-        ckan = ckanapi.TestAppCKAN(app, user["apikey"])
-        monkeypatch.setattr(tasks, "get_target", lambda *args: ckan)
-
-        sync_package(existing["id"], "dataset/update")
+        sync_package(
+            existing["id"], "dataset/update", next(get_syndicate_profiles())
+        )
 
         updated = helpers.call_action(
             "package_show",
@@ -270,8 +253,7 @@ class TestSyncTask(object):
 
     @pytest.mark.ckan_config("ckan.syndicate.name_prefix", "test")
     @pytest.mark.ckan_config("ckan.syndicate.replicate_organization", "yes")
-    def test_organization_replication(self, app, monkeypatch):
-        user = factories.User()
+    def test_organization_replication(self, user, ckan):
         local_org = factories.Organization(
             users=[{"capacity": "editor", "name": user["id"]}],
             name="local-org",
@@ -290,29 +272,29 @@ class TestSyncTask(object):
         )
         assert dataset["name"] == "syndicated_dataset"
 
-        ckan = ckanapi.TestAppCKAN(app, user["apikey"])
         ckan.address = "http://example.com"
-        monkeypatch.setattr(tasks, "get_target", lambda *args: ckan)
 
         # Syndicate to our Test CKAN instance
         mock_org_create = mock.Mock()
         mock_org_show = mock.Mock()
-        mock_org_show.side_effect = tk.ObjectNotFound
+        mock_org_show.side_effect = ckanapi.NotFound
         mock_org_create.return_value = local_org
 
         ckan.action.organization_create = mock_org_create
         ckan.action.organization_show = mock_org_show
 
-        sync_package(dataset["id"], "dataset/create")
+        sync_package(
+            dataset["id"], "dataset/create", next(get_syndicate_profiles())
+        )
 
         mock_org_show.assert_called_once_with(id=local_org["name"])
 
         assert mock_org_create.called
 
     @pytest.mark.ckan_config("ckan.syndicate.name_prefix", "test")
-    @pytest.mark.ckan_config("ckan.syndicate.author", "test_author")
-    def test_author_check(self, app, monkeypatch):
-        user = factories.User(name="test_author")
+    def test_author_check(self, user, ckan, monkeypatch, ckan_config):
+        monkeypatch.setitem(ckan_config, "ckan.syndicate.author", user["name"])
+
         context = {"user": user["name"]}
         dataset1 = helpers.call_action(
             "package_create",
@@ -321,50 +303,20 @@ class TestSyncTask(object):
             extras=[{"key": "syndicate", "value": "true"}],
         )
 
-        dataset2 = helpers.call_action(
-            "package_create",
-            context=context,
-            name="syndicated_dataset2",
-            extras=[{"key": "syndicate", "value": "true"}],
-        )
-
         mock_user_show = mock.Mock()
         mock_user_show.return_value = user
 
-        ckan = ckanapi.TestAppCKAN(app, user["apikey"])
         ckan.action.user_show = mock_user_show
 
-        def mock_target(*args):
-            return ckan
-
-        monkeypatch.setattr(tasks, "get_target", mock_target)
-
-        sync_package(dataset1["id"], "dataset/create")
+        profile = next(get_syndicate_profiles())
+        sync_package(dataset1["id"], "dataset/create", profile)
         helpers.call_action(
             "package_patch",
             id=dataset1["id"],
             extras=[{"key": "syndicate", "value": "true"}],
         )
 
-        sync_package(dataset1["id"], "dataset/update")
-        mock_user_show.assert_called_once_with(id="test_author")
+        sync_package(dataset1["id"], "dataset/update", profile)
+        mock_user_show.assert_called_once_with(id=user["name"])
         updated1 = helpers.call_action("package_show", id=dataset1["id"])
-        assert get_pkg_dict_extra(updated1, get_syndicated_id()) is not None
-
-        mock_user_show = mock.Mock()
-        mock_user_show.return_value = {"name": "random-name", "id": ""}
-        ckan.action.user_show = mock_user_show
-
-        sync_package(dataset2["id"], "dataset/create")
-        helpers.call_action(
-            "package_patch",
-            id=dataset2["id"],
-            extras=[{"key": "syndicate", "value": "true"}],
-        )
-        sync_package(dataset2["id"], "dataset/update")
-        updated2 = helpers.call_action("package_show", id=dataset2["id"])
-        assert not get_pkg_dict_extra(updated2, get_syndicated_id())
-        try:
-            del Session.revision
-        except AttributeError:
-            pass
+        assert get_pkg_dict_extra(updated1, "syndicated_id") is not None

@@ -125,8 +125,8 @@ def replicate_remote_organization(org: dict[str, Any], profile: Profile):
         org.pop("users", None)
         org.pop("groups", None)
 
-        default_img_url = urljoin(
-            ckan.address, "/base/images/placeholder-organization.png"
+        default_img_url = (
+            "https://www.gravatar.com/avatar/123?s=400&d=identicon"
         )
         image_url = org.pop("image_display_url", default_img_url)
         image_fd = requests.get(image_url, stream=True, timeout=2).raw
@@ -175,13 +175,15 @@ def _sync_create(package: dict[str, Any], profile: Profile):
         new_package_data["dataset_source"] = org_id
         remote_package = ckan.action.package_create(**new_package_data)
         set_syndicated_id(
-            package,
+            package["id"],
             remote_package["id"],
             profile["syndicate_field_id"],
         )
     except ckanapi.ValidationError as e:
         if "That URL is already in use." in e.error_dict.get("name", []):
-            _reattach_own_package(new_package_data, profile, ckan)
+            _reattach_own_package(
+                package["id"], new_package_data, profile, ckan
+            )
         else:
             raise
 
@@ -224,7 +226,9 @@ def _sync_update(package: dict[str, Any], profile: Profile):
         ckan.action.package_update(**updated_package)
     except ckanapi.ValidationError as e:
         if "That URL is already in use." in e.error_dict.get("name", []):
-            _reattach_own_package(updated_package, profile, ckan)
+            _reattach_own_package(
+                package["id"], updated_package, profile, ckan
+            )
         else:
             raise
 
@@ -253,7 +257,10 @@ def _prepare(
 
 
 def _reattach_own_package(
-    package: dict[str, Any], profile: Profile, ckan: ckanapi.RemoteCKAN
+    local_id: str,
+    package: dict[str, Any],
+    profile: Profile,
+    ckan: ckanapi.RemoteCKAN,
 ):
 
     log.warning(
@@ -285,28 +292,26 @@ def _reattach_own_package(
 
     ckan.action.package_update(id=remote_package["id"], **package)
     set_syndicated_id(
-        package,
+        local_id,
         remote_package["id"],
         profile["syndicate_field_id"],
     )
 
 
-def set_syndicated_id(
-    local_package: dict[str, Any], remote_package_id: str, field_id: str
-):
+def set_syndicated_id(local_id: str, remote_package_id: str, field_id: str):
     """Set the remote package id on the local package"""
     ext_id = (
         model.Session.query(model.PackageExtra.id)
         .join(model.Package, model.Package.id == model.PackageExtra.package_id)
         .filter(
-            model.Package.id == local_package["id"],
+            model.Package.id == local_id,
             model.PackageExtra.key == field_id,
         )
         .first()
     )
     if not ext_id:
         existing = model.PackageExtra(
-            package_id=local_package["id"],
+            package_id=local_id,
             key=field_id,
             value=remote_package_id,
         )
@@ -317,4 +322,4 @@ def set_syndicated_id(
         model.Session.query(model.PackageExtra).filter_by(id=ext_id).update(
             {"value": remote_package_id, "state": "active"}
         )
-        rebuild(local_package["id"])
+        rebuild(local_id)

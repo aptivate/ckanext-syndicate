@@ -1,9 +1,15 @@
 import pytest
 
-from ckanext.syndicate import utils
+from pytest_factoryboy import register
+
+from ckan.tests import factories
 
 
-@pytest.fixture
-def clean_db(reset_db):
-    reset_db()
-    utils.create_db()
+@register
+class PackageFactory(factories.Dataset):
+    pass
+
+
+@register
+class UserFactory(factories.User):
+    pass

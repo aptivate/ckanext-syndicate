@@ -68,6 +68,7 @@ class SyndicatePlugin(plugins.SingletonPlugin):
     # ISyndicate
 
     def skip_syndication(self, package: model.Package, profile: Profile):
+
         if profile["predicate"]:
             predicate = import_string(profile["predicate"])
             if not predicate(package):
@@ -81,7 +82,7 @@ class SyndicatePlugin(plugins.SingletonPlugin):
             return True
 
         syndicate = tk.asbool(
-            package.extras.get(profile["syndicate_field_id"], "false")
+            package.extras.get(profile["syndicate_flag"], "false")
         )
         return not syndicate
 

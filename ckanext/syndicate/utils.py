@@ -6,7 +6,7 @@ import warnings
 import logging
 
 from itertools import zip_longest
-from typing import Iterable, Type
+from typing import Iterable, Iterator, Type
 
 import ckan.model as ckan_model
 import ckan.plugins.toolkit as tk
@@ -51,7 +51,7 @@ def prepare_profile_dict(profile: SyndicateConfig) -> Profile:
         "syndicate_url": profile.syndicate_url or "",
         "syndicate_api_key": profile.syndicate_api_key or "",
         "syndicate_organization": profile.syndicate_organization or "",
-        "syndicate_flag": profile.syndicate_flag or "",
+        "syndicate_flag": profile.syndicate_flag or "syndicate",
         "syndicate_field_id": profile.syndicate_field_id or "syndicated_id",
         "syndicate_prefix": profile.syndicate_prefix or "",
         "syndicate_replicate_organization": profile.syndicate_replicate_organization
@@ -107,6 +107,6 @@ def seed_db():
     ckan_model.Session.commit()
 
 
-def get_syndicate_profiles() -> Iterable[Profile]:
+def get_syndicate_profiles() -> Iterator[Profile]:
     for profile in syndicate_configs_from_config(tk.config):
         yield prepare_profile_dict(profile)
