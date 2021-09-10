@@ -5,13 +5,11 @@ from __future__ import annotations
 import warnings
 import logging
 
-from time import sleep
 from itertools import zip_longest
 from typing import Iterable, Type
 
 import ckan.model as ckan_model
 import ckan.plugins.toolkit as tk
-from ckan.plugins import get_plugin
 
 import ckanext.syndicate.syndicate_model.model as model
 from ckanext.syndicate.syndicate_model.syndicate_config import SyndicateConfig
@@ -107,28 +105,6 @@ def seed_db():
         ckan_model.Session.add(profile)
         print("Added profile: {}".format(profile))
     ckan_model.Session.commit()
-
-
-def sync_portals(pkg=None, timeout=0.1):
-    plugin = get_plugin("syndicate")
-
-    if pkg:
-        pkg_obj = ckan_model.Package.get(pkg)
-        packages = [pkg_obj] if pkg_obj else []
-    else:
-        packages = ckan_model.Session.query(ckan_model.Package).filter_by(
-            state="active"
-        )
-
-    for package in packages:
-        sleep(timeout)
-        for profile in get_syndicate_profiles():
-            package.extras[profile["syndicate_field_id"]] = "true"
-        log.debug(
-            "Sending syndication signal to package {}".format(package.id)
-        )
-
-        plugin.notify(package, "changed")
 
 
 def get_syndicate_profiles() -> Iterable[Profile]:

@@ -1,7 +1,11 @@
 # -*- coding: utf-8 -*-
 
+import logging
+import time
 import click
 
+import ckan.model as model
+from ckan.plugins import get_plugin
 import ckanext.syndicate.utils as utils
 
 
@@ -23,9 +27,33 @@ def seed():
 @syndicate.command()
 @click.argument("id", required=False)
 @click.option("-t", "--timeout", type=float, default=0.1)
-def sync(id, timeout):
+@click.option("-c", "--clean_logs", is_flag=True)
+def sync(id, timeout, clean_logs):
     """Syndicate datasets to remote portals."""
-    utils.sync_portals(id, timeout)
+    plugin = get_plugin("syndicate")
+
+    packages = model.Session.query(model.Package)
+    if id:
+        packages = packages.filter(
+            (model.Package.id == id) | (model.Package.name == id)
+        )
+
+    total = packages.count()
+
+    if clean_logs:
+        logging.getLogger("ckanext.syndicate.plugin").propagate = False
+        logging.getLogger("ckan.lib.jobs").propagate = False
+
+    with click.progressbar(packages, length=total) as bar:
+        for package in bar:
+            bar.label = "Sending syndication signal to package {}".format(
+                package.id
+            )
+            for profile in utils.get_syndicate_profiles():
+                package.extras[profile["syndicate_field_id"]] = "true"
+            time.sleep(timeout)
+
+            plugin.notify(package, "changed")
 
 
 @syndicate.command()
