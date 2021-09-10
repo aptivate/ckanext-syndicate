@@ -27,8 +27,8 @@ def seed():
 @syndicate.command()
 @click.argument("id", required=False)
 @click.option("-t", "--timeout", type=float, default=0.1)
-@click.option("-c", "--clean_logs", is_flag=True)
-def sync(id, timeout, clean_logs):
+@click.option("-v", "--verbose", count=True)
+def sync(id, timeout, verbose):
     """Syndicate datasets to remote portals."""
     plugin = get_plugin("syndicate")
 
@@ -40,7 +40,7 @@ def sync(id, timeout, clean_logs):
 
     total = packages.count()
 
-    if clean_logs:
+    if not verbose:
         logging.getLogger("ckanext.syndicate.plugin").propagate = False
         logging.getLogger("ckan.lib.jobs").propagate = False
 
