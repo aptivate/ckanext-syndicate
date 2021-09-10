@@ -143,6 +143,10 @@ def _sync_create(package: dict[str, Any], profile: Profile):
         syndicate_name_prefix,
         new_package_data["name"],
     )
+    if len(name) > 100:
+        uniq = str(uuid.uuid3(uuid.NAMESPACE_DNS, name))
+        name = name[92:] + uniq[:8]
+
     new_package_data["name"] = name
     new_package_data["extras"] = filter_extras(
         new_package_data["extras"], profile
