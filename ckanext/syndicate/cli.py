@@ -5,7 +5,6 @@ import time
 import click
 
 import ckan.model as model
-from ckan.plugins import get_plugin
 import ckanext.syndicate.utils as utils
 
 
@@ -30,7 +29,6 @@ def seed():
 @click.option("-v", "--verbose", count=True)
 def sync(id, timeout, verbose):
     """Syndicate datasets to remote portals."""
-    plugin = get_plugin("syndicate")
 
     packages = model.Session.query(model.Package)
     if id:
@@ -49,11 +47,8 @@ def sync(id, timeout, verbose):
             bar.label = "Sending syndication signal to package {}".format(
                 package.id
             )
-            for profile in utils.get_syndicate_profiles():
-                package.extras[profile["syndicate_field_id"]] = "true"
+            utils.try_sync(package.id)
             time.sleep(timeout)
-
-            plugin.notify(package, "changed")
 
 
 @syndicate.command()

@@ -10,6 +10,7 @@ from typing import Iterable, Iterator, Type
 
 import ckan.model as ckan_model
 import ckan.plugins.toolkit as tk
+from ckan.plugins import get_plugin
 
 import ckanext.syndicate.syndicate_model.model as model
 from ckanext.syndicate.syndicate_model.syndicate_config import SyndicateConfig
@@ -110,3 +111,14 @@ def seed_db():
 def get_syndicate_profiles() -> Iterator[Profile]:
     for profile in syndicate_configs_from_config(tk.config):
         yield prepare_profile_dict(profile)
+
+
+def try_sync(id_):
+    plugin = get_plugin("syndicate")
+
+    pkg = ckan_model.Package.get(id_)
+    if not pkg:
+        return
+    for profile in get_syndicate_profiles():
+        pkg.extras[profile["syndicate_field_id"]] = "true"
+    plugin.notify(pkg, "changed")
