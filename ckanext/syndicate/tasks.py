@@ -60,6 +60,17 @@ def sync_package(package_id: str, action: Topic, profile: Profile):
         params,
     )
 
+    _notify_before(package_id, profile, params)
+
+    if action == "dataset/create":
+        _sync_create(package, profile)
+    elif action == "dataset/update":
+        _sync_update(package, profile)
+
+    _notify_after(package_id, profile, params)
+
+
+def _notify_before(package_id, profile, params):
     try:
         toolkit.get_action("before_syndication_action")(
             {"profile": profile}, params
@@ -73,11 +84,8 @@ def sync_package(package_id: str, action: Topic, profile: Profile):
         )
     signals.before_syndication.send(package_id, profile=profile, params=params)
 
-    if action == "dataset/create":
-        _sync_create(package, profile)
-    elif action == "dataset/update":
-        _sync_update(package, profile)
 
+def _notify_after(package_id, profile, params):
     try:
         toolkit.get_action("after_syndication_action")(
             {"profile": profile}, params
@@ -219,8 +227,6 @@ def _sync_update(package: dict[str, Any], profile: Profile):
             _reattach_own_package(updated_package, profile, ckan)
         else:
             raise
-    except requests.ConnectionError as e:
-        log.error("Package update error", exc_info=e)
 
 
 def _prepare(

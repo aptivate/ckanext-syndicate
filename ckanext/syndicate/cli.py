@@ -26,7 +26,7 @@ def seed():
 
 @syndicate.command()
 @click.argument("id", required=False)
-@click.option("-t", "--timeout", type=float, default=0.1)
+@click.option("-t", "--timeout", type=float, default=0)
 @click.option("-v", "--verbose", count=True)
 def sync(id, timeout, verbose):
     """Syndicate datasets to remote portals."""
