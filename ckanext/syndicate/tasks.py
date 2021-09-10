@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import uuid
+
 from typing import Any, Optional
 from ckanext.syndicate.interfaces import ISyndicate
 import logging
@@ -137,11 +139,11 @@ def _sync_create(package: dict[str, Any], profile: Profile):
     # Take syndicate prefix from profile or use global config prefix
     syndicate_name_prefix = profile["syndicate_prefix"]
 
-    new_package_data["name"] = "%s-%s" % (
+    name = "%s-%s" % (
         syndicate_name_prefix,
         new_package_data["name"],
     )
-
+    new_package_data["name"] = name
     new_package_data["extras"] = filter_extras(
         new_package_data["extras"], profile
     )
