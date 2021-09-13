@@ -1,21 +1,18 @@
 # -*- coding: utf-8 -*-
 from __future__ import annotations
-from collections import defaultdict
-
-
+import json
 import warnings
 import logging
+from collections import defaultdict
 
 from itertools import zip_longest
-from typing import Iterable, Iterator, Type
+from typing import Any, Iterable, Iterator, Type, NamedTuple
 
 import ckan.model as ckan_model
 import ckan.plugins.toolkit as tk
 from ckan.plugins import get_plugin
 
-import ckanext.syndicate.syndicate_model.model as model
-from ckanext.syndicate.syndicate_model.syndicate_config import SyndicateConfig
-from ckanext.syndicate.types import Profile, Topic
+from ckanext.syndicate.types import Topic
 
 
 CkanDeprecationWarning: Type
@@ -28,6 +25,21 @@ except ImportError:
 
 class SyndicationDeprecationWarning(CkanDeprecationWarning):
     pass
+
+
+class Profile(NamedTuple):
+    id: str
+    ckan_url: str = ""
+    api_key: str = ""
+    organization: str = ""
+    flag: str = "syndicate"
+    field_id: str = "syndicated_id"
+    name_prefix: str = ""
+    replicate_organization: bool = False
+    author: str = ""
+
+    predicate: str = ""
+    extras: dict[str, Any] = {}
 
 
 PROFILE_PREFIX = "ckanext.syndicate.profile."
@@ -48,37 +60,23 @@ def syndicate_dataset(package_id: str, topic: Topic, profile: Profile):
     )
 
 
-def prepare_profile_dict(profile: SyndicateConfig) -> Profile:
-    profile_dict: Profile = {
-        "id": profile.id,
-        "url": profile.syndicate_ckan_url or "",
-        "api_key": profile.syndicate_api_key or "",
-        "organization": profile.syndicate_organization or "",
-        "flag": profile.syndicate_flag or "syndicate",
-        "field_id": profile.syndicate_field_id or "syndicated_id",
-        "prefix": profile.syndicate_prefix or "",
-        "replicate_organization": profile.syndicate_replicate_organization
-        or False,
-        "author": profile.syndicate_author or "",
-        "predicate": profile.predicate or "",
-        "extras": profile.extras or {},
-    }
-
-    return profile_dict
+def prepare_profile_dict(profile: Profile) -> Profile:
+    return profile
 
 
 def syndicate_configs_from_config(config) -> Iterable[Profile]:
     prefix = "ckan.syndicate."
     keys = (
-        "ckan_url",
         "api_key",
-        "organization",
-        "replicate_organization",
         "author",
-        "predicate",
+        "extras",
         "field_id",
         "flag",
+        "organization",
+        "predicate",
         "name_prefix",
+        "replicate_organization",
+        "ckan_url",
     )
 
     profile_lists = zip_longest(
@@ -89,10 +87,13 @@ def syndicate_configs_from_config(config) -> Iterable[Profile]:
             f"Deprecated profile definition: {item}. Use"
             f" {PROFILE_PREFIX}*.OPTION form"
         )
-        breakpoint()
-        obj = SyndicateConfig._for_seed(item)
-        obj.id = str(idx)
-        yield obj
+        data = dict((k, v) for k, v in zip(keys, item) if v is not None)
+
+        try:
+            data["extras"] = json.loads(data.get("extras", "{}"))
+        except (TypeError, ValueError):
+            data["extras"] = {}
+        yield Profile(id=str(idx), **data)
 
     yield from _parse_profiles(config)
 
@@ -106,6 +107,11 @@ def _parse_profiles(config: dict[str, str]) -> Iterable[Profile]:
         profiles[profile][attr] = v
 
     for id_, data in profiles.items():
+        try:
+            data["extras"] = json.loads(data.get("extras", "{}"))
+        except (TypeError, ValueError):
+            data["extras"] = {}
+
         yield Profile(id=id_, **data)
 
 
@@ -121,5 +127,5 @@ def try_sync(id_):
     if not pkg:
         return
     for profile in get_syndicate_profiles():
-        pkg.extras[profile["field_id"]] = "true"
+        pkg.extras[profile.field_id] = "true"
     plugin.notify(pkg, "changed")

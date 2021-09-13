@@ -17,7 +17,7 @@ import ckanext.syndicate.utils as utils
 import ckanext.syndicate.cli as cli
 
 from .interfaces import ISyndicate
-from .types import Profile, Topic
+from .types import Topic
 
 
 log = logging.getLogger(__name__)
@@ -60,21 +60,21 @@ class SyndicatePlugin(plugins.SingletonPlugin):
 
     # ISyndicate
 
-    def skip_syndication(self, package: model.Package, profile: Profile):
+    def skip_syndication(self, package: model.Package, profile: utils.Profile):
 
-        if profile["predicate"]:
-            predicate = import_string(profile["predicate"])
+        if profile.predicate:
+            predicate = import_string(profile.predicate)
             if not predicate(package):
                 log.info(
                     "Dataset[{}] will not syndicate because of predicate[{}]"
-                    " rejection".format(package.id, profile["predicate"])
+                    " rejection".format(package.id, profile.predicate)
                 )
                 return True
 
         if package.private:
             return True
 
-        syndicate = tk.asbool(package.extras.get(profile["flag"], "false"))
+        syndicate = tk.asbool(package.extras.get(profile.flag, "false"))
         return not syndicate
 
 
@@ -104,11 +104,9 @@ def _syndicate_dataset(package, operation):
                 "Plugin %s decided to skip syndication of %s for profile %s",
                 skipper.name,
                 package.id,
-                profile["id"],
+                profile.id,
             )
             continue
 
-        log.debug(
-            "Syndicate <{}> to {}".format(package.id, profile["syndicate_url"])
-        )
+        log.debug("Syndicate <{}> to {}".format(package.id, profile.ckan_url))
         utils.syndicate_dataset(package.id, topic, profile)

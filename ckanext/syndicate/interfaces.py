@@ -1,5 +1,5 @@
 from __future__ import annotations
-from ckanext.syndicate.types import Profile
+from ckanext.syndicate.utils import Profile
 
 from typing import Any
 import ckan.model as model
