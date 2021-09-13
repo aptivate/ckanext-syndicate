@@ -81,9 +81,7 @@ class SyndicatePlugin(plugins.SingletonPlugin):
         if package.private:
             return True
 
-        syndicate = tk.asbool(
-            package.extras.get(profile["syndicate_flag"], "false")
-        )
+        syndicate = tk.asbool(package.extras.get(profile["flag"], "false"))
         return not syndicate
 
 

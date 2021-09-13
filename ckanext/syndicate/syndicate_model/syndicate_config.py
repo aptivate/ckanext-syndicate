@@ -1,4 +1,6 @@
-from typing import Optional
+from __future__ import annotations
+
+from typing import Any, Optional
 from ckan.model.domain_object import DomainObject
 from ckan.model.types import make_uuid
 import ckan.plugins.toolkit as tk
@@ -12,7 +14,7 @@ class SyndicateConfig(Base, DomainObject):
     __tablename__ = "syndicate_config"
 
     id: str = Column(UnicodeText, primary_key=True, default=make_uuid)
-    syndicate_url: str = Column(UnicodeText, unique=True)
+    syndicate_ckan_url: str = Column(UnicodeText, unique=True)
     syndicate_api_key: Optional[str] = Column(UnicodeText)
     syndicate_organization: Optional[str] = Column(UnicodeText)
     syndicate_replicate_organization: bool = Column(Boolean)
@@ -21,6 +23,7 @@ class SyndicateConfig(Base, DomainObject):
     syndicate_field_id: Optional[str] = Column(UnicodeText)
     syndicate_flag: Optional[str] = Column(UnicodeText)
     syndicate_prefix: Optional[str] = Column(UnicodeText)
+    extras: dict[str, Any] = {}
 
     # not added to _for_seed
 
@@ -31,7 +34,7 @@ class SyndicateConfig(Base, DomainObject):
     @classmethod
     def _for_seed(cls, data):
         return cls(
-            syndicate_url=data[0],
+            syndicate_ckan_url=data[0],
             syndicate_api_key=data[1],
             syndicate_organization=data[2],
             syndicate_replicate_organization=tk.asbool(data[3]),

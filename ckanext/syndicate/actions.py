@@ -20,7 +20,7 @@ def syndicate_individual_dataset(context, data_dict):
 
     pkg_dict = toolkit.get_action("package_show")(context, {"id": id})
     endpoints = pkg_dict.get("syndication_endpoints", [])
-    if profile.syndicate_url not in endpoints:
+    if profile.syndicate_ckan_url not in endpoints:
         raise toolkit.ValidationError(
             "Syndication endpoint not configured for current dataset"
         )
@@ -49,7 +49,7 @@ def syndicate_datasets_by_endpoint(context, data_dict):
     packages = (
         model.Session.query(model.PackageExtra.package_id.distinct())
         .filter_by(key="syndication_endpoints")
-        .filter(model.PackageExtra.value.contains(profile.syndicate_url))
+        .filter(model.PackageExtra.value.contains(profile.syndicate_ckan_url))
     )
     prepared_profile = utils.prepare_profile_dict(profile)
     for pkg in packages:

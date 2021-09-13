@@ -33,7 +33,7 @@ def get_target(target_url, target_api):
 
 def filter_extras(extras, profile: Profile):
     extras_dict = dict([(o["key"], o["value"]) for o in extras])
-    extras_dict.pop(profile["syndicate_field_id"], None)
+    extras_dict.pop(profile["field_id"], None)
     return [{"key": k, "value": v} for (k, v) in extras_dict.items()]
 
 
@@ -101,7 +101,7 @@ def _notify_after(package_id, profile, params):
 
 
 def replicate_remote_organization(org: dict[str, Any], profile: Profile):
-    ckan = get_target(profile["syndicate_url"], profile["syndicate_api_key"])
+    ckan = get_target(profile["url"], profile["api_key"])
     remote_org = None
 
     try:
@@ -138,14 +138,14 @@ def replicate_remote_organization(org: dict[str, Any], profile: Profile):
 
 
 def _sync_create(package: dict[str, Any], profile: Profile):
-    ckan = get_target(profile["syndicate_url"], profile["syndicate_api_key"])
+    ckan = get_target(profile["url"], profile["api_key"])
 
     # Create a new package based on the local instance
     new_package_data = dict(package)
     del new_package_data["id"]
 
     # Take syndicate prefix from profile or use global config prefix
-    syndicate_name_prefix = profile["syndicate_prefix"]
+    syndicate_name_prefix = profile["prefix"]
 
     name = "%s-%s" % (
         syndicate_name_prefix,
@@ -163,11 +163,11 @@ def _sync_create(package: dict[str, Any], profile: Profile):
 
     org = new_package_data.pop("organization")
 
-    if profile["syndicate_replicate_organization"]:
+    if profile["replicate_organization"]:
         org_id = replicate_remote_organization(org, profile)
     else:
         # Take syndicated org from the profile or use global config org
-        org_id = profile["syndicate_organization"]
+        org_id = profile["organization"]
     new_package_data["owner_org"] = org_id
 
     new_package_data = _prepare(package["id"], new_package_data, profile)
@@ -177,7 +177,7 @@ def _sync_create(package: dict[str, Any], profile: Profile):
         set_syndicated_id(
             package["id"],
             remote_package["id"],
-            profile["syndicate_field_id"],
+            profile["field_id"],
         )
     except ckanapi.ValidationError as e:
         if "That URL is already in use." in e.error_dict.get("name", []):
@@ -189,10 +189,10 @@ def _sync_create(package: dict[str, Any], profile: Profile):
 
 
 def _sync_update(package: dict[str, Any], profile: Profile):
-    ckan = get_target(profile["syndicate_url"], profile["syndicate_api_key"])
+    ckan = get_target(profile["url"], profile["api_key"])
 
     syndicated_id: Optional[str] = toolkit.h.get_pkg_dict_extra(
-        package, profile["syndicate_field_id"]
+        package, profile["field_id"]
     )
     if not syndicated_id:
         return _sync_create(package, profile)
@@ -212,11 +212,11 @@ def _sync_update(package: dict[str, Any], profile: Profile):
 
     org = updated_package.pop("organization")
 
-    if profile["syndicate_replicate_organization"]:
+    if profile["replicate_organization"]:
         org_id = replicate_remote_organization(org, profile)
     else:
         # Take syndicated org from the profile or use global config org
-        org_id = profile["syndicate_organization"]
+        org_id = profile["organization"]
 
     updated_package["owner_org"] = org_id
 
@@ -267,7 +267,7 @@ def _reattach_own_package(
         "There is a package with the same name on remote portal: %s.",
         package["name"],
     )
-    author = profile["syndicate_author"]
+    author = profile["author"]
     if not author:
         raise
     try:

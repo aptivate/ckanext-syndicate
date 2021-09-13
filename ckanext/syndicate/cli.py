@@ -5,6 +5,7 @@ import time
 import click
 
 import ckan.model as model
+import ckan.plugins.toolkit as tk
 import ckanext.syndicate.utils as utils
 
 
@@ -15,12 +16,6 @@ def get_commands():
 @click.group()
 def syndicate():
     pass
-
-
-@syndicate.command()
-def seed():
-    """Fill database with syndication profiles."""
-    utils.seed_db()
 
 
 @syndicate.command()
@@ -54,5 +49,6 @@ def sync(id, timeout, verbose):
 @syndicate.command()
 def init():
     """Creates new syndication table."""
-    utils.reset_db()
-    click.secho("DB tables are reinitialized", fg="green")
+    tk.error_shout(
+        "`ckan syndicate init` is not required and takes no effect anymore"
+    )

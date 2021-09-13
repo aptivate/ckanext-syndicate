@@ -1,18 +1,22 @@
+from __future__ import annotations
+
+from typing import Any
 from typing_extensions import TypedDict, Literal
 
 
 class Profile(TypedDict):
     id: str
-    syndicate_url: str
-    syndicate_api_key: str
-    syndicate_organization: str
-    syndicate_flag: str
-    syndicate_field_id: str
-    syndicate_prefix: str
-    syndicate_replicate_organization: bool
-    syndicate_author: str
+    url: str
+    api_key: str
+    organization: str
+    flag: str
+    field_id: str
+    prefix: str
+    replicate_organization: bool
+    author: str
 
     predicate: str
+    extras: dict[str, Any]
 
 
 Topic = Literal["dataset/create", "dataset/update"]

@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 from __future__ import annotations
+from collections import defaultdict
 
 
 import warnings
@@ -29,6 +30,7 @@ class SyndicationDeprecationWarning(CkanDeprecationWarning):
     pass
 
 
+PROFILE_PREFIX = "ckanext.syndicate.profile."
 log = logging.getLogger(__name__)
 
 
@@ -49,33 +51,20 @@ def syndicate_dataset(package_id: str, topic: Topic, profile: Profile):
 def prepare_profile_dict(profile: SyndicateConfig) -> Profile:
     profile_dict: Profile = {
         "id": profile.id,
-        "syndicate_url": profile.syndicate_url or "",
-        "syndicate_api_key": profile.syndicate_api_key or "",
-        "syndicate_organization": profile.syndicate_organization or "",
-        "syndicate_flag": profile.syndicate_flag or "syndicate",
-        "syndicate_field_id": profile.syndicate_field_id or "syndicated_id",
-        "syndicate_prefix": profile.syndicate_prefix or "",
-        "syndicate_replicate_organization": profile.syndicate_replicate_organization
+        "url": profile.syndicate_ckan_url or "",
+        "api_key": profile.syndicate_api_key or "",
+        "organization": profile.syndicate_organization or "",
+        "flag": profile.syndicate_flag or "syndicate",
+        "field_id": profile.syndicate_field_id or "syndicated_id",
+        "prefix": profile.syndicate_prefix or "",
+        "replicate_organization": profile.syndicate_replicate_organization
         or False,
-        "syndicate_author": profile.syndicate_author or "",
+        "author": profile.syndicate_author or "",
         "predicate": profile.predicate or "",
+        "extras": profile.extras or {},
     }
 
     return profile_dict
-
-
-def reset_db():
-    drop_db()
-    create_db()
-    seed_db()
-
-
-def drop_db():
-    model.drop_tables()
-
-
-def create_db():
-    model.create_tables()
 
 
 def syndicate_configs_from_config(config) -> Iterable[SyndicateConfig]:
@@ -96,16 +85,28 @@ def syndicate_configs_from_config(config) -> Iterable[SyndicateConfig]:
         *[tk.aslist(config.get(prefix + key)) for key in keys]
     )
     for idx, item in enumerate(profile_lists):
+        deprecated(
+            f"Deprecated profile definition: {item}. Use"
+            f" {PROFILE_PREFIX}*.OPTION form"
+        )
         obj = SyndicateConfig._for_seed(item)
         obj.id = str(idx)
         yield obj
 
+    yield from _parse_profiles(config)
 
-def seed_db():
-    for profile in syndicate_configs_from_config(tk.config):
-        ckan_model.Session.add(profile)
-        print("Added profile: {}".format(profile))
-    ckan_model.Session.commit()
+
+def _parse_profiles(config: dict[str, str]) -> Iterable[SyndicateConfig]:
+    profiles = defaultdict(dict)
+    for opt, v in config.items():
+        if not opt.startswith(PROFILE_PREFIX):
+            continue
+        profile, attr = opt[len(PROFILE_PREFIX) :].split(".", 1)
+        key = "syndicate_" + attr if attr != "predicate" else attr
+        profiles[profile][key] = v
+
+    for id_, data in profiles.items():
+        yield SyndicateConfig(id=id_, **data)
 
 
 def get_syndicate_profiles() -> Iterator[Profile]:
@@ -120,5 +121,5 @@ def try_sync(id_):
     if not pkg:
         return
     for profile in get_syndicate_profiles():
-        pkg.extras[profile["syndicate_field_id"]] = "true"
+        pkg.extras[profile["field_id"]] = "true"
     plugin.notify(pkg, "changed")
