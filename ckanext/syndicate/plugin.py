@@ -61,6 +61,8 @@ class SyndicatePlugin(plugins.SingletonPlugin):
     # ISyndicate
 
     def skip_syndication(self, package: model.Package, profile: utils.Profile):
+        if package.private:
+            return True
 
         if profile.predicate:
             predicate = import_string(profile.predicate)
@@ -70,9 +72,6 @@ class SyndicatePlugin(plugins.SingletonPlugin):
                     " rejection".format(package.id, profile.predicate)
                 )
                 return True
-
-        if package.private:
-            return True
 
         syndicate = tk.asbool(package.extras.get(profile.flag, "false"))
         return not syndicate
