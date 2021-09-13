@@ -13,7 +13,6 @@ import ckan.plugins.toolkit as tk
 import ckan.model as model
 from ckan.model.domain_object import DomainObjectOperation
 
-import ckanext.syndicate.actions as actions
 import ckanext.syndicate.utils as utils
 import ckanext.syndicate.cli as cli
 
@@ -30,7 +29,6 @@ def get_syndicate_flag():
 
 class SyndicatePlugin(plugins.SingletonPlugin):
     plugins.implements(plugins.IDomainObjectModification, inherit=True)
-    plugins.implements(plugins.IActions)
     plugins.implements(plugins.IClick)
     plugins.implements(ISyndicate, inherit=True)
     plugins.implements(plugins.IConfigurable)
@@ -47,11 +45,6 @@ class SyndicatePlugin(plugins.SingletonPlugin):
 
     def get_commands(self):
         return cli.get_commands()
-
-    # IActions
-
-    def get_actions(self):
-        return actions.get_actions()
 
     # Based on ckanext-webhooks plugin
     # IDomainObjectNotification & IResourceURLChange

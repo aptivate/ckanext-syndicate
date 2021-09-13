@@ -67,7 +67,7 @@ def prepare_profile_dict(profile: SyndicateConfig) -> Profile:
     return profile_dict
 
 
-def syndicate_configs_from_config(config) -> Iterable[SyndicateConfig]:
+def syndicate_configs_from_config(config) -> Iterable[Profile]:
     prefix = "ckan.syndicate."
     keys = (
         "ckan_url",
@@ -89,6 +89,7 @@ def syndicate_configs_from_config(config) -> Iterable[SyndicateConfig]:
             f"Deprecated profile definition: {item}. Use"
             f" {PROFILE_PREFIX}*.OPTION form"
         )
+        breakpoint()
         obj = SyndicateConfig._for_seed(item)
         obj.id = str(idx)
         yield obj
@@ -96,17 +97,16 @@ def syndicate_configs_from_config(config) -> Iterable[SyndicateConfig]:
     yield from _parse_profiles(config)
 
 
-def _parse_profiles(config: dict[str, str]) -> Iterable[SyndicateConfig]:
+def _parse_profiles(config: dict[str, str]) -> Iterable[Profile]:
     profiles = defaultdict(dict)
     for opt, v in config.items():
         if not opt.startswith(PROFILE_PREFIX):
             continue
         profile, attr = opt[len(PROFILE_PREFIX) :].split(".", 1)
-        key = "syndicate_" + attr if attr != "predicate" else attr
-        profiles[profile][key] = v
+        profiles[profile][attr] = v
 
     for id_, data in profiles.items():
-        yield SyndicateConfig(id=id_, **data)
+        yield Profile(id=id_, **data)
 
 
 def get_syndicate_profiles() -> Iterator[Profile]:
