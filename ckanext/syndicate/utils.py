@@ -111,6 +111,4 @@ def try_sync(id_):
     pkg = ckan_model.Package.get(id_)
     if not pkg:
         return
-    for profile in get_syndicate_profiles():
-        pkg.extras[profile.field_id] = "true"
     plugin.notify(pkg, "changed")
