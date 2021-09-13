@@ -6,13 +6,13 @@ import logging
 from collections import defaultdict
 
 from itertools import zip_longest
-from typing import Any, Iterable, Iterator, Type, NamedTuple
+from typing import Iterable, Iterator, Type
 
 import ckan.model as ckan_model
 import ckan.plugins.toolkit as tk
 from ckan.plugins import get_plugin
 
-from ckanext.syndicate.types import Topic
+from ckanext.syndicate.types import Topic, Profile
 
 
 CkanDeprecationWarning: Type
@@ -25,21 +25,6 @@ except ImportError:
 
 class SyndicationDeprecationWarning(CkanDeprecationWarning):
     pass
-
-
-class Profile(NamedTuple):
-    id: str
-    ckan_url: str = ""
-    api_key: str = ""
-    organization: str = ""
-    flag: str = "syndicate"
-    field_id: str = "syndicated_id"
-    name_prefix: str = ""
-    replicate_organization: bool = False
-    author: str = ""
-
-    predicate: str = ""
-    extras: dict[str, Any] = {}
 
 
 PROFILE_PREFIX = "ckanext.syndicate.profile."
