@@ -27,7 +27,12 @@ def get_target(url, apikey):
 
 
 def sync_package(package_id: str, action: Topic, profile: Profile):
-    log.info("Sync package %s, with action %s" % (package_id, action))
+    log.info(
+        "Sync package %s, with action %s to the %s",
+        package_id,
+        action.name,
+        profile.id,
+    )
 
     # load the package at run of time task (rather than use package state at
     # time of task creation).
