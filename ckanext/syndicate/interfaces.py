@@ -1,9 +1,11 @@
 from __future__ import annotations
-from ckanext.syndicate.utils import Profile
 
 from typing import Any
+
 import ckan.model as model
 from ckan.plugins import Interface
+
+from .types import Profile
 
 
 class ISyndicate(Interface):

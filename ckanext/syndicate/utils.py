@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
 from __future__ import annotations
-import json
-import warnings
-import logging
-from collections import defaultdict
 
+import json
+import logging
+import warnings
+from collections import defaultdict
 from itertools import zip_longest
 from typing import Iterable, Iterator, Type
 
@@ -12,8 +12,7 @@ import ckan.model as ckan_model
 import ckan.plugins.toolkit as tk
 from ckan.plugins import get_plugin
 
-from ckanext.syndicate.types import Topic, Profile
-
+from .types import Profile, Topic
 
 CkanDeprecationWarning: Type
 
@@ -40,7 +39,7 @@ def syndicate_dataset(package_id: str, topic: Topic, profile: Profile):
     import ckanext.syndicate.tasks as tasks
 
     tk.enqueue_job(
-        tasks.sync_package_task,
+        tasks.sync_package,
         [package_id, topic, profile],
     )
 

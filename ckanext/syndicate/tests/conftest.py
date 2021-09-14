@@ -1,8 +1,6 @@
 import pytest
-
-from pytest_factoryboy import register
-
 from ckan.tests import factories
+from pytest_factoryboy import register
 
 
 @register

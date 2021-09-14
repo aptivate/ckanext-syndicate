@@ -56,7 +56,6 @@ setup(
     install_requires=[
         "ckanapi",
         "ckantoolkit",
-        "typing_extensions",
         "blinker",
     ],
     # If there are data files included in your packages that need to be

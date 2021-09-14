@@ -2,10 +2,11 @@
 
 import logging
 import time
-import click
 
 import ckan.model as model
 import ckan.plugins.toolkit as tk
+import click
+
 import ckanext.syndicate.utils as utils
 
 
@@ -22,7 +23,8 @@ def syndicate():
 @click.argument("id", required=False)
 @click.option("-t", "--timeout", type=float, default=0)
 @click.option("-v", "--verbose", count=True)
-def sync(id, timeout, verbose):
+@click.option("-f", "--foreground", is_flag=True)
+def sync(id, timeout, verbose, foreground):
     """Syndicate datasets to remote portals."""
 
     packages = model.Session.query(model.Package)

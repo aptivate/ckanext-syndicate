@@ -1,14 +1,13 @@
 # -*- coding: utf-8 -*-
 
-import pytest
-
-import mock
-
-import ckanapi
-import ckan.tests.helpers as helpers
 import ckan.tests.factories as factories
+import ckan.tests.helpers as helpers
+import ckanapi
+import mock
+import pytest
 from ckan.lib.helpers import get_pkg_dict_extra
 
+from ckanext.syndicate.types import Topic
 from ckanext.syndicate.utils import get_syndicate_profiles
 
 
@@ -65,7 +64,7 @@ class TestSyncTask(object):
         assert dataset["name"] == "syndicated_dataset"
 
         sync_package(
-            dataset["id"], "dataset/create", next(get_syndicate_profiles())
+            dataset["id"], Topic.create, next(get_syndicate_profiles())
         )
 
         # Reload our local package, to read the syndicated ID
@@ -140,7 +139,7 @@ class TestSyncTask(object):
         assert 2 == len(helpers.call_action("package_list"))
 
         sync_package(
-            dataset["id"], "dataset/update", next(get_syndicate_profiles())
+            dataset["id"], Topic.update, next(get_syndicate_profiles())
         )
 
         # Expect the remote package to be updated
@@ -186,7 +185,7 @@ class TestSyncTask(object):
         )
 
         sync_package(
-            existing["id"], "dataset/update", next(get_syndicate_profiles())
+            existing["id"], Topic.update, next(get_syndicate_profiles())
         )
 
         updated = helpers.call_action(
@@ -232,7 +231,7 @@ class TestSyncTask(object):
         )
 
         sync_package(
-            existing["id"], "dataset/update", next(get_syndicate_profiles())
+            existing["id"], Topic.update, next(get_syndicate_profiles())
         )
 
         updated = helpers.call_action(
@@ -284,7 +283,7 @@ class TestSyncTask(object):
         ckan.action.organization_show = mock_org_show
 
         sync_package(
-            dataset["id"], "dataset/create", next(get_syndicate_profiles())
+            dataset["id"], Topic.create, next(get_syndicate_profiles())
         )
 
         mock_org_show.assert_called_once_with(id=local_org["name"])
@@ -309,14 +308,14 @@ class TestSyncTask(object):
         ckan.action.user_show = mock_user_show
 
         profile = next(get_syndicate_profiles())
-        sync_package(dataset1["id"], "dataset/create", profile)
+        sync_package(dataset1["id"], Topic.create, profile)
         helpers.call_action(
             "package_patch",
             id=dataset1["id"],
             extras=[{"key": "syndicate", "value": "true"}],
         )
 
-        sync_package(dataset1["id"], "dataset/update", profile)
+        sync_package(dataset1["id"], Topic.update, profile)
         mock_user_show.assert_called_once_with(id=user["name"])
         updated1 = helpers.call_action("package_show", id=dataset1["id"])
         assert get_pkg_dict_extra(updated1, "syndicated_id") is not None

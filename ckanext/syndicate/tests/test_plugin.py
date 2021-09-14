@@ -1,8 +1,9 @@
-import pytest
-
 import ckan.model as model
-from ckan.model.domain_object import DomainObjectOperation
 import ckan.plugins as p
+import pytest
+from ckan.model.domain_object import DomainObjectOperation
+
+from ckanext.syndicate.types import Topic
 
 
 @pytest.fixture
@@ -33,7 +34,7 @@ class TestDatasetNotify:
     ):
         plugin.notify(dataset_with_flag, DomainObjectOperation.new)
         syndicate.assert_called_with(
-            dataset_with_flag.id, "dataset/create", mocker.ANY
+            dataset_with_flag.id, Topic.create, mocker.ANY
         )
 
     def test_does_not_syndicate_for_private_dataset(
@@ -49,7 +50,7 @@ class TestDatasetNotify:
     ):
         plugin.notify(dataset_with_flag, DomainObjectOperation.changed)
         syndicate.assert_called_with(
-            dataset_with_flag.id, "dataset/update", mocker.ANY
+            dataset_with_flag.id, Topic.update, mocker.ANY
         )
 
     def test_does_not_syndicate_for_delete(
@@ -68,7 +69,7 @@ class TestSyndicateFlag:
 
         dataset.extras = {"syndicate": "True"}
         plugin.notify(dataset, DomainObjectOperation.new)
-        syndicate.assert_called_with(dataset.id, "dataset/create", mocker.ANY)
+        syndicate.assert_called_with(dataset.id, Topic.create, mocker.ANY)
 
     def test_not_syndicated_when_flag_false(self, syndicate, plugin, dataset):
         dataset.extras = {"syndicate": "false"}

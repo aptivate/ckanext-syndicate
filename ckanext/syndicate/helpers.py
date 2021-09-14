@@ -2,7 +2,6 @@
 
 import ckan.plugins.toolkit as tk
 
-
 CONFIG_ALLOWED_ORG = "ckanext.syndication.predicate.allowed_organization"
 CONFIG_DENIED_ORG = "ckanext.syndication.predicate.denied_organization"
 

@@ -2,23 +2,19 @@ from __future__ import annotations
 
 import logging
 import warnings
-
 from typing import Optional
 
-from werkzeug.utils import import_string
-
+import ckan.model as model
 import ckan.plugins as plugins
 import ckan.plugins.toolkit as tk
-
-import ckan.model as model
 from ckan.model.domain_object import DomainObjectOperation
+from werkzeug.utils import import_string
 
-import ckanext.syndicate.utils as utils
 import ckanext.syndicate.cli as cli
+import ckanext.syndicate.utils as utils
 
 from .interfaces import ISyndicate
 from .types import Topic
-
 
 log = logging.getLogger(__name__)
 
@@ -77,17 +73,19 @@ class SyndicatePlugin(plugins.SingletonPlugin):
         return not syndicate
 
 
-def _get_topic(operation: str) -> Optional[Topic]:
+def _get_topic(operation: str) -> Topic:
     if operation == DomainObjectOperation.new:
-        return "dataset/create"
+        return Topic.create
 
     if operation == DomainObjectOperation.changed:
-        return "dataset/update"
+        return Topic.update
+
+    return Topic.unknown
 
 
 def _syndicate_dataset(package, operation):
     topic = _get_topic(operation)
-    if topic is None:
+    if topic is Topic.unknown:
         log.debug(
             "Notification topic for operation [%s] is not defined",
             operation,

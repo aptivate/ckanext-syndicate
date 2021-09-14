@@ -1,9 +1,13 @@
 from __future__ import annotations
 
+import enum
 from typing import Any, NamedTuple
-from typing_extensions import Literal
 
-Topic = Literal["dataset/create", "dataset/update"]
+
+class Topic(enum.Enum):
+    create = enum.auto()
+    update = enum.auto()
+    unknown = enum.auto()
 
 
 class Profile(NamedTuple):
