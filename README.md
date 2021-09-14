@@ -166,7 +166,7 @@ Default implementation of ``skip_syndication`` prevents syndication for:
 
 Mass or individual syndication can be triggered as well from command line::
 
-  ckan syndicate sync [ID]
+	ckan syndicate sync [ID]
 
 ## Running the Tests
 
