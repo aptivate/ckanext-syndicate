@@ -6,8 +6,8 @@ import uuid
 from typing import Any, Optional
 
 import ckan.plugins as plugins
+import ckan.plugins.toolkit as tk
 import ckanapi
-import ckantoolkit as toolkit
 import requests
 from ckan import model
 from ckan.lib.search import rebuild
@@ -34,7 +34,7 @@ def sync_package(package_id: str, action: Topic, profile: Profile):
     params = {
         "id": package_id,
     }
-    package: dict[str, Any] = toolkit.get_action("package_show")(
+    package: dict[str, Any] = tk.get_action("package_show")(
         {
             "ignore_auth": True,
             "use_cache": False,
@@ -55,7 +55,7 @@ def sync_package(package_id: str, action: Topic, profile: Profile):
 
 def _notify_before(package_id, profile, params):
     try:
-        toolkit.get_action("before_syndication_action")(
+        tk.get_action("before_syndication_action")(
             {"profile": profile}, params
         )
     except KeyError:
@@ -70,9 +70,7 @@ def _notify_before(package_id, profile, params):
 
 def _notify_after(package_id, profile, params):
     try:
-        toolkit.get_action("after_syndication_action")(
-            {"profile": profile}, params
-        )
+        tk.get_action("after_syndication_action")({"profile": profile}, params)
     except KeyError:
         pass
     else:
@@ -143,7 +141,7 @@ def _create(package: dict[str, Any], profile: Profile):
 def _update(package: dict[str, Any], profile: Profile):
     ckan = get_target(profile.ckan_url, profile.api_key)
 
-    syndicated_id: Optional[str] = toolkit.h.get_pkg_dict_extra(
+    syndicated_id: Optional[str] = tk.h.get_pkg_dict_extra(
         package, profile.field_id
     )
     if not syndicated_id:
@@ -201,7 +199,7 @@ def _prepare(
     package["owner_org"] = _normalize_org_id(package, profile)
 
     try:
-        package = toolkit.get_action("update_dataset_for_syndication")(
+        package = tk.get_action("update_dataset_for_syndication")(
             {},
             {"dataset_dict": package, "package_id": local_id},
         )
