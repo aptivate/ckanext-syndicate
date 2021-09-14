@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import logging
 import warnings
-from typing import Optional
 
 import ckan.model as model
 import ckan.plugins as plugins
