@@ -1,0 +1,1 @@
+ISyndicate implementations with inherit flag and no skip_syndication method use default implementaion instead of no-op
