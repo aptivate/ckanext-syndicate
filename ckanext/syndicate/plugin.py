@@ -7,7 +7,6 @@ import ckan.model as model
 import ckan.plugins as plugins
 import ckan.plugins.toolkit as tk
 from ckan.model.domain_object import DomainObjectOperation
-from werkzeug.utils import import_string
 
 import ckanext.syndicate.cli as cli
 import ckanext.syndicate.utils as utils
@@ -25,8 +24,8 @@ def get_syndicate_flag():
 class SyndicatePlugin(plugins.SingletonPlugin):
     plugins.implements(plugins.IDomainObjectModification, inherit=True)
     plugins.implements(plugins.IClick)
-    plugins.implements(ISyndicate, inherit=True)
     plugins.implements(plugins.IConfigurable)
+    plugins.implements(ISyndicate, inherit=True)
 
     # IConfigurable
 
@@ -52,24 +51,6 @@ class SyndicatePlugin(plugins.SingletonPlugin):
             return
 
         _syndicate_dataset(entity, operation)
-
-    # ISyndicate
-
-    def skip_syndication(self, package: model.Package, profile: utils.Profile):
-        if package.private:
-            return True
-
-        if profile.predicate:
-            predicate = import_string(profile.predicate)
-            if not predicate(package):
-                log.info(
-                    "Dataset[{}] will not syndicate because of predicate[{}]"
-                    " rejection".format(package.id, profile.predicate)
-                )
-                return True
-
-        syndicate = tk.asbool(package.extras.get(profile.flag, "false"))
-        return not syndicate
 
 
 def _get_topic(operation: str) -> Topic:
